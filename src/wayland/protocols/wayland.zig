@@ -1,4 +1,5 @@
-const WaylandRuntime = @import("../runtime.zig").WaylandRuntime;
+const WaylandRuntime = @import("../WaylandRuntime.zig");
+const wayland_types = @import("../wayland_types.zig");
 
 /// # wl_display
 /// 
@@ -74,7 +75,7 @@ pub const wl_display = struct {
     ///     wl_callback
     /// 
     /// 
-    pub fn sync() void {}
+    pub fn sync(self: *const wl_display) !void {}
 
     /// # get_registry
     /// 
@@ -111,7 +112,7 @@ pub const wl_display = struct {
     ///     wl_registry
     /// 
     /// 
-    pub fn get_registry() void {}
+    pub fn get_registry(self: *const wl_display) !void {}
 
     /// # error
     /// 
@@ -162,7 +163,7 @@ pub const wl_display = struct {
     ///     error description
     /// 
     /// 
-    pub fn on_error() void {}
+    pub fn next_error() void {}
 
     /// # delete_id
     /// 
@@ -191,7 +192,7 @@ pub const wl_display = struct {
     ///     deleted object ID
     /// 
     /// 
-    pub fn on_delete_id() void {}
+    pub fn next_delete_id() void {}
 };
 
 /// # wl_registry
@@ -265,7 +266,7 @@ pub const wl_registry = struct {
     ///     bounded object
     /// 
     /// 
-    pub fn bind() void {}
+    pub fn bind(self: *const wl_registry, name: u32) !void {}
 
     /// # global
     /// 
@@ -314,7 +315,7 @@ pub const wl_registry = struct {
     ///     interface version
     /// 
     /// 
-    pub fn on_global() void {}
+    pub fn next_global() void {}
 
     /// # global_remove
     /// 
@@ -348,7 +349,7 @@ pub const wl_registry = struct {
     ///     numeric name of the global object
     /// 
     /// 
-    pub fn on_global_remove() void {}
+    pub fn next_global_remove() void {}
 };
 
 /// # wl_callback
@@ -396,7 +397,7 @@ pub const wl_callback = struct {
     ///     request-specific data for the callback
     /// 
     /// 
-    pub fn on_done() void {}
+    pub fn next_done() void {}
 };
 
 /// # wl_compositor
@@ -446,7 +447,7 @@ pub const wl_compositor = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn create_surface() void {}
+    pub fn create_surface(self: *const wl_compositor) !void {}
 
     /// # create_region
     /// 
@@ -475,7 +476,7 @@ pub const wl_compositor = struct {
     ///     wl_region
     /// 
     /// 
-    pub fn create_region() void {}
+    pub fn create_region(self: *const wl_compositor) !void {}
 };
 
 /// # wl_shm_pool
@@ -593,7 +594,7 @@ pub const wl_shm_pool = struct {
     ///     wl_shm.format
     /// 
     /// 
-    pub fn create_buffer() void {}
+    pub fn create_buffer(self: *const wl_shm_pool, offset: i32, width: i32, height: i32, stride: i32, format: u32) !void {}
 
     /// # destroy
     /// 
@@ -612,7 +613,7 @@ pub const wl_shm_pool = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const wl_shm_pool) !void {}
 
     /// # resize
     /// 
@@ -646,7 +647,7 @@ pub const wl_shm_pool = struct {
     ///     new size of the pool, in bytes
     /// 
     /// 
-    pub fn resize() void {}
+    pub fn resize(self: *const wl_shm_pool, size: i32) !void {}
 };
 
 /// # wl_shm
@@ -889,7 +890,7 @@ pub const wl_shm = struct {
     ///     pool size, in bytes
     /// 
     /// 
-    pub fn create_pool() void {}
+    pub fn create_pool(self: *const wl_shm, fd: wayland_types.Fd, size: i32) !void {}
 
     /// # release
     /// 
@@ -907,7 +908,7 @@ pub const wl_shm = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn release() void {}
+    pub fn release(self: *const wl_shm) !void {}
 
     /// # format
     /// 
@@ -938,7 +939,7 @@ pub const wl_shm = struct {
     ///     format
     /// 
     /// 
-    pub fn on_format() void {}
+    pub fn next_format() void {}
 };
 
 /// # wl_buffer
@@ -989,7 +990,7 @@ pub const wl_buffer = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const wl_buffer) !void {}
 
     /// # release
     /// 
@@ -1015,7 +1016,7 @@ pub const wl_buffer = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_release() void {}
+    pub fn next_release() void {}
 };
 
 /// # wl_data_offer
@@ -1098,7 +1099,7 @@ pub const wl_data_offer = struct {
     ///     true
     /// 
     /// 
-    pub fn accept() void {}
+    pub fn accept(self: *const wl_data_offer, serial: u32, mime_type: wayland_types.String) !void {}
 
     /// # receive
     /// 
@@ -1147,7 +1148,7 @@ pub const wl_data_offer = struct {
     ///     file descriptor for data transfer
     /// 
     /// 
-    pub fn receive() void {}
+    pub fn receive(self: *const wl_data_offer, mime_type: wayland_types.String, fd: wayland_types.Fd) !void {}
 
     /// # destroy
     /// 
@@ -1162,7 +1163,7 @@ pub const wl_data_offer = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const wl_data_offer) !void {}
 
     /// # finish
     /// 
@@ -1190,7 +1191,7 @@ pub const wl_data_offer = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn finish() void {}
+    pub fn finish(self: *const wl_data_offer) !void {}
 
     /// # set_actions
     /// 
@@ -1263,7 +1264,7 @@ pub const wl_data_offer = struct {
     ///     wl_data_device_manager.dnd_action
     /// 
     /// 
-    pub fn set_actions() void {}
+    pub fn set_actions(self: *const wl_data_offer, dnd_actions: u32, preferred_action: u32) !void {}
 
     /// # offer
     /// 
@@ -1289,7 +1290,7 @@ pub const wl_data_offer = struct {
     ///     offered mime type
     /// 
     /// 
-    pub fn on_offer() void {}
+    pub fn next_offer() void {}
 
     /// # source_actions
     /// 
@@ -1321,7 +1322,7 @@ pub const wl_data_offer = struct {
     ///     wl_data_device_manager.dnd_action
     /// 
     /// 
-    pub fn on_source_actions() void {}
+    pub fn next_source_actions() void {}
 
     /// # action
     /// 
@@ -1384,7 +1385,7 @@ pub const wl_data_offer = struct {
     ///     wl_data_device_manager.dnd_action
     /// 
     /// 
-    pub fn on_action() void {}
+    pub fn next_action() void {}
 };
 
 /// # wl_data_source
@@ -1438,7 +1439,7 @@ pub const wl_data_source = struct {
     ///     mime type offered by the data source
     /// 
     /// 
-    pub fn offer() void {}
+    pub fn offer(self: *const wl_data_source, mime_type: wayland_types.String) !void {}
 
     /// # destroy
     /// 
@@ -1453,7 +1454,7 @@ pub const wl_data_source = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const wl_data_source) !void {}
 
     /// # set_actions
     /// 
@@ -1494,7 +1495,7 @@ pub const wl_data_source = struct {
     ///     wl_data_device_manager.dnd_action
     /// 
     /// 
-    pub fn set_actions() void {}
+    pub fn set_actions(self: *const wl_data_source, dnd_actions: u32) !void {}
 
     /// # target
     /// 
@@ -1526,7 +1527,7 @@ pub const wl_data_source = struct {
     ///     true
     /// 
     /// 
-    pub fn on_target() void {}
+    pub fn next_target() void {}
 
     /// # send
     /// 
@@ -1563,7 +1564,7 @@ pub const wl_data_source = struct {
     ///     file descriptor for the data
     /// 
     /// 
-    pub fn on_send() void {}
+    pub fn next_send() void {}
 
     /// # cancelled
     /// 
@@ -1597,7 +1598,7 @@ pub const wl_data_source = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_cancelled() void {}
+    pub fn next_cancelled() void {}
 
     /// # dnd_drop_performed
     /// 
@@ -1620,7 +1621,7 @@ pub const wl_data_source = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_dnd_drop_performed() void {}
+    pub fn next_dnd_drop_performed() void {}
 
     /// # dnd_finished
     /// 
@@ -1640,7 +1641,7 @@ pub const wl_data_source = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_dnd_finished() void {}
+    pub fn next_dnd_finished() void {}
 
     /// # action
     /// 
@@ -1693,7 +1694,7 @@ pub const wl_data_source = struct {
     ///     wl_data_device_manager.dnd_action
     /// 
     /// 
-    pub fn on_action() void {}
+    pub fn next_action() void {}
 };
 
 /// # wl_data_device
@@ -1824,7 +1825,7 @@ pub const wl_data_device = struct {
     ///     serial number of the implicit grab on the origin
     /// 
     /// 
-    pub fn start_drag() void {}
+    pub fn start_drag(self: *const wl_data_device, source: wayland_types.ObjectId, origin: wayland_types.ObjectId, icon: wayland_types.ObjectId, serial: u32) !void {}
 
     /// # set_selection
     /// 
@@ -1874,7 +1875,7 @@ pub const wl_data_device = struct {
     ///     serial number of the event that triggered this request
     /// 
     /// 
-    pub fn set_selection() void {}
+    pub fn set_selection(self: *const wl_data_device, source: wayland_types.ObjectId, serial: u32) !void {}
 
     /// # release
     /// 
@@ -1889,7 +1890,7 @@ pub const wl_data_device = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn release() void {}
+    pub fn release(self: *const wl_data_device) !void {}
 
     /// # data_offer
     /// 
@@ -1924,7 +1925,7 @@ pub const wl_data_device = struct {
     ///     wl_data_offer
     /// 
     /// 
-    pub fn on_data_offer() void {}
+    pub fn next_data_offer() void {}
 
     /// # enter
     /// 
@@ -2004,7 +2005,7 @@ pub const wl_data_device = struct {
     ///     true
     /// 
     /// 
-    pub fn on_enter() void {}
+    pub fn next_enter() void {}
 
     /// # leave
     /// 
@@ -2021,7 +2022,7 @@ pub const wl_data_device = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_leave() void {}
+    pub fn next_leave() void {}
 
     /// # motion
     /// 
@@ -2069,7 +2070,7 @@ pub const wl_data_device = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn on_motion() void {}
+    pub fn next_motion() void {}
 
     /// # drop
     /// 
@@ -2096,7 +2097,7 @@ pub const wl_data_device = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_drop() void {}
+    pub fn next_drop() void {}
 
     /// # selection
     /// 
@@ -2140,7 +2141,7 @@ pub const wl_data_device = struct {
     ///     true
     /// 
     /// 
-    pub fn on_selection() void {}
+    pub fn next_selection() void {}
 };
 
 /// # wl_data_device_manager
@@ -2236,7 +2237,7 @@ pub const wl_data_device_manager = struct {
     ///     wl_data_source
     /// 
     /// 
-    pub fn create_data_source() void {}
+    pub fn create_data_source(self: *const wl_data_device_manager) !void {}
 
     /// # get_data_device
     /// 
@@ -2279,7 +2280,7 @@ pub const wl_data_device_manager = struct {
     ///     wl_seat
     /// 
     /// 
-    pub fn get_data_device() void {}
+    pub fn get_data_device(self: *const wl_data_device_manager, seat: wayland_types.ObjectId) !void {}
 };
 
 /// # wl_shell
@@ -2357,7 +2358,7 @@ pub const wl_shell = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn get_shell_surface() void {}
+    pub fn get_shell_surface(self: *const wl_shell, surface: wayland_types.ObjectId) !void {}
 };
 
 /// # wl_shell_surface
@@ -2471,7 +2472,7 @@ pub const wl_shell_surface = struct {
     ///     serial number of the ping event
     /// 
     /// 
-    pub fn pong() void {}
+    pub fn pong(self: *const wl_shell_surface, serial: u32) !void {}
 
     /// # move
     /// 
@@ -2514,7 +2515,7 @@ pub const wl_shell_surface = struct {
     ///     serial number of the implicit grab on the pointer
     /// 
     /// 
-    pub fn move() void {}
+    pub fn move(self: *const wl_shell_surface, seat: wayland_types.ObjectId, serial: u32) !void {}
 
     /// # resize
     /// 
@@ -2571,7 +2572,7 @@ pub const wl_shell_surface = struct {
     ///     resize
     /// 
     /// 
-    pub fn resize() void {}
+    pub fn resize(self: *const wl_shell_surface, seat: wayland_types.ObjectId, serial: u32, edges: u32) !void {}
 
     /// # set_toplevel
     /// 
@@ -2588,7 +2589,7 @@ pub const wl_shell_surface = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn set_toplevel() void {}
+    pub fn set_toplevel(self: *const wl_shell_surface) !void {}
 
     /// # set_transient
     /// 
@@ -2657,7 +2658,7 @@ pub const wl_shell_surface = struct {
     ///     transient
     /// 
     /// 
-    pub fn set_transient() void {}
+    pub fn set_transient(self: *const wl_shell_surface, parent: wayland_types.ObjectId, x: i32, y: i32, flags: u32) !void {}
 
     /// # set_fullscreen
     /// 
@@ -2746,7 +2747,7 @@ pub const wl_shell_surface = struct {
     ///     true
     /// 
     /// 
-    pub fn set_fullscreen() void {}
+    pub fn set_fullscreen(self: *const wl_shell_surface, method: u32, framerate: u32, output: wayland_types.ObjectId) !void {}
 
     /// # set_popup
     /// 
@@ -2851,7 +2852,7 @@ pub const wl_shell_surface = struct {
     ///     transient
     /// 
     /// 
-    pub fn set_popup() void {}
+    pub fn set_popup(self: *const wl_shell_surface, seat: wayland_types.ObjectId, serial: u32, parent: wayland_types.ObjectId, x: i32, y: i32, flags: u32) !void {}
 
     /// # set_maximized
     /// 
@@ -2901,7 +2902,7 @@ pub const wl_shell_surface = struct {
     ///     true
     /// 
     /// 
-    pub fn set_maximized() void {}
+    pub fn set_maximized(self: *const wl_shell_surface, output: wayland_types.ObjectId) !void {}
 
     /// # set_title
     /// 
@@ -2932,7 +2933,7 @@ pub const wl_shell_surface = struct {
     ///     surface title
     /// 
     /// 
-    pub fn set_title() void {}
+    pub fn set_title(self: *const wl_shell_surface, title: wayland_types.String) !void {}
 
     /// # set_class
     /// 
@@ -2962,7 +2963,7 @@ pub const wl_shell_surface = struct {
     ///     surface class
     /// 
     /// 
-    pub fn set_class() void {}
+    pub fn set_class(self: *const wl_shell_surface, class_: wayland_types.String) !void {}
 
     /// # ping
     /// 
@@ -2988,7 +2989,7 @@ pub const wl_shell_surface = struct {
     ///     serial number of the ping
     /// 
     /// 
-    pub fn on_ping() void {}
+    pub fn next_ping() void {}
 
     /// # configure
     /// 
@@ -3053,7 +3054,7 @@ pub const wl_shell_surface = struct {
     ///     new height of the surface
     /// 
     /// 
-    pub fn on_configure() void {}
+    pub fn next_configure() void {}
 
     /// # popup_done
     /// 
@@ -3070,7 +3071,7 @@ pub const wl_shell_surface = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_popup_done() void {}
+    pub fn next_popup_done() void {}
 };
 
 /// # wl_surface
@@ -3163,7 +3164,7 @@ pub const wl_surface = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const wl_surface) !void {}
 
     /// # attach
     /// 
@@ -3279,7 +3280,7 @@ pub const wl_surface = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn attach() void {}
+    pub fn attach(self: *const wl_surface, buffer: wayland_types.ObjectId, x: i32, y: i32) !void {}
 
     /// # damage
     /// 
@@ -3354,7 +3355,7 @@ pub const wl_surface = struct {
     ///     height of damage rectangle
     /// 
     /// 
-    pub fn damage() void {}
+    pub fn damage(self: *const wl_surface, x: i32, y: i32, width: i32, height: i32) !void {}
 
     /// # frame
     /// 
@@ -3414,7 +3415,7 @@ pub const wl_surface = struct {
     ///     wl_callback
     /// 
     /// 
-    pub fn frame() void {}
+    pub fn frame(self: *const wl_surface) !void {}
 
     /// # set_opaque_region
     /// 
@@ -3470,7 +3471,7 @@ pub const wl_surface = struct {
     ///     true
     /// 
     /// 
-    pub fn set_opaque_region() void {}
+    pub fn set_opaque_region(self: *const wl_surface, region: wayland_types.ObjectId) !void {}
 
     /// # set_input_region
     /// 
@@ -3524,7 +3525,7 @@ pub const wl_surface = struct {
     ///     true
     /// 
     /// 
-    pub fn set_input_region() void {}
+    pub fn set_input_region(self: *const wl_surface, region: wayland_types.ObjectId) !void {}
 
     /// # commit
     /// 
@@ -3557,7 +3558,7 @@ pub const wl_surface = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn commit() void {}
+    pub fn commit(self: *const wl_surface) !void {}
 
     /// # set_buffer_transform
     /// 
@@ -3616,7 +3617,7 @@ pub const wl_surface = struct {
     ///     wl_output.transform
     /// 
     /// 
-    pub fn set_buffer_transform() void {}
+    pub fn set_buffer_transform(self: *const wl_surface, transform: i32) !void {}
 
     /// # set_buffer_scale
     /// 
@@ -3663,7 +3664,7 @@ pub const wl_surface = struct {
     ///     scale for interpreting buffer contents
     /// 
     /// 
-    pub fn set_buffer_scale() void {}
+    pub fn set_buffer_scale(self: *const wl_surface, scale: i32) !void {}
 
     /// # damage_buffer
     /// 
@@ -3749,7 +3750,7 @@ pub const wl_surface = struct {
     ///     height of damage rectangle
     /// 
     /// 
-    pub fn damage_buffer() void {}
+    pub fn damage_buffer(self: *const wl_surface, x: i32, y: i32, width: i32, height: i32) !void {}
 
     /// # offset
     /// 
@@ -3795,7 +3796,7 @@ pub const wl_surface = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn offset() void {}
+    pub fn offset(self: *const wl_surface, x: i32, y: i32) !void {}
 
     /// # enter
     /// 
@@ -3828,7 +3829,7 @@ pub const wl_surface = struct {
     ///     wl_output
     /// 
     /// 
-    pub fn on_enter() void {}
+    pub fn next_enter() void {}
 
     /// # leave
     /// 
@@ -3865,7 +3866,7 @@ pub const wl_surface = struct {
     ///     wl_output
     /// 
     /// 
-    pub fn on_leave() void {}
+    pub fn next_leave() void {}
 
     /// # preferred_buffer_scale
     /// 
@@ -3901,7 +3902,7 @@ pub const wl_surface = struct {
     ///     preferred scaling factor
     /// 
     /// 
-    pub fn on_preferred_buffer_scale() void {}
+    pub fn next_preferred_buffer_scale() void {}
 
     /// # preferred_buffer_transform
     /// 
@@ -3938,7 +3939,7 @@ pub const wl_surface = struct {
     ///     wl_output.transform
     /// 
     /// 
-    pub fn on_preferred_buffer_transform() void {}
+    pub fn next_preferred_buffer_transform() void {}
 };
 
 /// # wl_seat
@@ -4027,7 +4028,7 @@ pub const wl_seat = struct {
     ///     wl_pointer
     /// 
     /// 
-    pub fn get_pointer() void {}
+    pub fn get_pointer(self: *const wl_seat) !void {}
 
     /// # get_keyboard
     /// 
@@ -4063,7 +4064,7 @@ pub const wl_seat = struct {
     ///     wl_keyboard
     /// 
     /// 
-    pub fn get_keyboard() void {}
+    pub fn get_keyboard(self: *const wl_seat) !void {}
 
     /// # get_touch
     /// 
@@ -4099,7 +4100,7 @@ pub const wl_seat = struct {
     ///     wl_touch
     /// 
     /// 
-    pub fn get_touch() void {}
+    pub fn get_touch(self: *const wl_seat) !void {}
 
     /// # release
     /// 
@@ -4115,7 +4116,7 @@ pub const wl_seat = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn release() void {}
+    pub fn release(self: *const wl_seat) !void {}
 
     /// # capabilities
     /// 
@@ -4167,7 +4168,7 @@ pub const wl_seat = struct {
     ///     capability
     /// 
     /// 
-    pub fn on_capabilities() void {}
+    pub fn next_capabilities() void {}
 
     /// # name
     /// 
@@ -4207,7 +4208,7 @@ pub const wl_seat = struct {
     ///     seat identifier
     /// 
     /// 
-    pub fn on_name() void {}
+    pub fn next_name() void {}
 };
 
 /// # wl_pointer
@@ -4411,7 +4412,7 @@ pub const wl_pointer = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn set_cursor() void {}
+    pub fn set_cursor(self: *const wl_pointer, serial: u32, surface: wayland_types.ObjectId, hotspot_x: i32, hotspot_y: i32) !void {}
 
     /// # release
     /// 
@@ -4430,7 +4431,7 @@ pub const wl_pointer = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn release() void {}
+    pub fn release(self: *const wl_pointer) !void {}
 
     /// # enter
     /// 
@@ -4494,7 +4495,7 @@ pub const wl_pointer = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn on_enter() void {}
+    pub fn next_enter() void {}
 
     /// # leave
     /// 
@@ -4537,7 +4538,7 @@ pub const wl_pointer = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn on_leave() void {}
+    pub fn next_leave() void {}
 
     /// # motion
     /// 
@@ -4584,7 +4585,7 @@ pub const wl_pointer = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn on_motion() void {}
+    pub fn next_motion() void {}
 
     /// # button
     /// 
@@ -4656,7 +4657,7 @@ pub const wl_pointer = struct {
     ///     button_state
     /// 
     /// 
-    pub fn on_button() void {}
+    pub fn next_button() void {}
 
     /// # axis
     /// 
@@ -4720,7 +4721,7 @@ pub const wl_pointer = struct {
     ///     length of vector in surface-local coordinate space
     /// 
     /// 
-    pub fn on_axis() void {}
+    pub fn next_axis() void {}
 
     /// # frame
     /// 
@@ -4768,7 +4769,7 @@ pub const wl_pointer = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_frame() void {}
+    pub fn next_frame() void {}
 
     /// # axis_source
     /// 
@@ -4821,7 +4822,7 @@ pub const wl_pointer = struct {
     ///     axis_source
     /// 
     /// 
-    pub fn on_axis_source() void {}
+    pub fn next_axis_source() void {}
 
     /// # axis_stop
     /// 
@@ -4873,7 +4874,7 @@ pub const wl_pointer = struct {
     ///     axis
     /// 
     /// 
-    pub fn on_axis_stop() void {}
+    pub fn next_axis_stop() void {}
 
     /// # axis_discrete
     /// 
@@ -4941,7 +4942,7 @@ pub const wl_pointer = struct {
     ///     number of steps
     /// 
     /// 
-    pub fn on_axis_discrete() void {}
+    pub fn next_axis_discrete() void {}
 
     /// # axis_value120
     /// 
@@ -5000,7 +5001,7 @@ pub const wl_pointer = struct {
     ///     scroll distance as fraction of 120
     /// 
     /// 
-    pub fn on_axis_value120() void {}
+    pub fn next_axis_value120() void {}
 
     /// # axis_relative_direction
     /// 
@@ -5077,7 +5078,7 @@ pub const wl_pointer = struct {
     ///     axis_relative_direction
     /// 
     /// 
-    pub fn on_axis_relative_direction() void {}
+    pub fn next_axis_relative_direction() void {}
 };
 
 /// # wl_keyboard
@@ -5146,7 +5147,7 @@ pub const wl_keyboard = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn release() void {}
+    pub fn release(self: *const wl_keyboard) !void {}
 
     /// # keymap
     /// 
@@ -5200,7 +5201,7 @@ pub const wl_keyboard = struct {
     ///     keymap size, in bytes
     /// 
     /// 
-    pub fn on_keymap() void {}
+    pub fn next_keymap() void {}
 
     /// # enter
     /// 
@@ -5258,7 +5259,7 @@ pub const wl_keyboard = struct {
     ///     the keys currently logically down
     /// 
     /// 
-    pub fn on_enter() void {}
+    pub fn next_enter() void {}
 
     /// # leave
     /// 
@@ -5306,7 +5307,7 @@ pub const wl_keyboard = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn on_leave() void {}
+    pub fn next_leave() void {}
 
     /// # key
     /// 
@@ -5382,7 +5383,7 @@ pub const wl_keyboard = struct {
     ///     key_state
     /// 
     /// 
-    pub fn on_key() void {}
+    pub fn next_key() void {}
 
     /// # modifiers
     /// 
@@ -5459,7 +5460,7 @@ pub const wl_keyboard = struct {
     ///     keyboard layout
     /// 
     /// 
-    pub fn on_modifiers() void {}
+    pub fn next_modifiers() void {}
 
     /// # repeat_info
     /// 
@@ -5505,7 +5506,7 @@ pub const wl_keyboard = struct {
     ///     delay in milliseconds since key down until repeating starts
     /// 
     /// 
-    pub fn on_repeat_info() void {}
+    pub fn next_repeat_info() void {}
 };
 
 /// # wl_touch
@@ -5539,7 +5540,7 @@ pub const wl_touch = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn release() void {}
+    pub fn release(self: *const wl_touch) !void {}
 
     /// # down
     /// 
@@ -5621,7 +5622,7 @@ pub const wl_touch = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn on_down() void {}
+    pub fn next_down() void {}
 
     /// # up
     /// 
@@ -5668,7 +5669,7 @@ pub const wl_touch = struct {
     ///     the unique ID of this touch point
     /// 
     /// 
-    pub fn on_up() void {}
+    pub fn next_up() void {}
 
     /// # motion
     /// 
@@ -5723,7 +5724,7 @@ pub const wl_touch = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn on_motion() void {}
+    pub fn next_motion() void {}
 
     /// # frame
     /// 
@@ -5745,7 +5746,7 @@ pub const wl_touch = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_frame() void {}
+    pub fn next_frame() void {}
 
     /// # cancel
     /// 
@@ -5767,7 +5768,7 @@ pub const wl_touch = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_cancel() void {}
+    pub fn next_cancel() void {}
 
     /// # shape
     /// 
@@ -5836,7 +5837,7 @@ pub const wl_touch = struct {
     ///     length of the minor axis in surface-local coordinates
     /// 
     /// 
-    pub fn on_shape() void {}
+    pub fn next_shape() void {}
 
     /// # orientation
     /// 
@@ -5893,7 +5894,7 @@ pub const wl_touch = struct {
     ///     angle between major axis and positive surface y-axis in degrees
     /// 
     /// 
-    pub fn on_orientation() void {}
+    pub fn next_orientation() void {}
 };
 
 /// # wl_output
@@ -5999,7 +6000,7 @@ pub const wl_output = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn release() void {}
+    pub fn release(self: *const wl_output) !void {}
 
     /// # geometry
     /// 
@@ -6121,7 +6122,7 @@ pub const wl_output = struct {
     ///     transform
     /// 
     /// 
-    pub fn on_geometry() void {}
+    pub fn next_geometry() void {}
 
     /// # mode
     /// 
@@ -6212,7 +6213,7 @@ pub const wl_output = struct {
     ///     vertical refresh rate in mHz
     /// 
     /// 
-    pub fn on_mode() void {}
+    pub fn next_mode() void {}
 
     /// # done
     /// 
@@ -6231,7 +6232,7 @@ pub const wl_output = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn on_done() void {}
+    pub fn next_done() void {}
 
     /// # scale
     /// 
@@ -6273,7 +6274,7 @@ pub const wl_output = struct {
     ///     scaling factor of output
     /// 
     /// 
-    pub fn on_scale() void {}
+    pub fn next_scale() void {}
 
     /// # name
     /// 
@@ -6325,7 +6326,7 @@ pub const wl_output = struct {
     ///     output name
     /// 
     /// 
-    pub fn on_name() void {}
+    pub fn next_name() void {}
 
     /// # description
     /// 
@@ -6363,7 +6364,7 @@ pub const wl_output = struct {
     ///     output description
     /// 
     /// 
-    pub fn on_description() void {}
+    pub fn next_description() void {}
 };
 
 /// # wl_region
@@ -6400,7 +6401,7 @@ pub const wl_region = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const wl_region) !void {}
 
     /// # add
     /// 
@@ -6455,7 +6456,7 @@ pub const wl_region = struct {
     ///     rectangle height
     /// 
     /// 
-    pub fn add() void {}
+    pub fn add(self: *const wl_region, x: i32, y: i32, width: i32, height: i32) !void {}
 
     /// # subtract
     /// 
@@ -6510,7 +6511,7 @@ pub const wl_region = struct {
     ///     rectangle height
     /// 
     /// 
-    pub fn subtract() void {}
+    pub fn subtract(self: *const wl_region, x: i32, y: i32, width: i32, height: i32) !void {}
 };
 
 /// # wl_subcompositor
@@ -6569,7 +6570,7 @@ pub const wl_subcompositor = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const wl_subcompositor) !void {}
 
     /// # get_subsurface
     /// 
@@ -6644,7 +6645,7 @@ pub const wl_subcompositor = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn get_subsurface() void {}
+    pub fn get_subsurface(self: *const wl_subcompositor, surface: wayland_types.ObjectId, parent: wayland_types.ObjectId) !void {}
 };
 
 /// # wl_subsurface
@@ -6736,7 +6737,7 @@ pub const wl_subsurface = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const wl_subsurface) !void {}
 
     /// # set_position
     /// 
@@ -6784,7 +6785,7 @@ pub const wl_subsurface = struct {
     ///     y coordinate in the parent surface
     /// 
     /// 
-    pub fn set_position() void {}
+    pub fn set_position(self: *const wl_subsurface, x: i32, y: i32) !void {}
 
     /// # place_above
     /// 
@@ -6825,7 +6826,7 @@ pub const wl_subsurface = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn place_above() void {}
+    pub fn place_above(self: *const wl_subsurface, sibling: wayland_types.ObjectId) !void {}
 
     /// # place_below
     /// 
@@ -6855,7 +6856,7 @@ pub const wl_subsurface = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn place_below() void {}
+    pub fn place_below(self: *const wl_subsurface, sibling: wayland_types.ObjectId) !void {}
 
     /// # set_sync
     /// 
@@ -6882,7 +6883,7 @@ pub const wl_subsurface = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn set_sync() void {}
+    pub fn set_sync(self: *const wl_subsurface) !void {}
 
     /// # set_desync
     /// 
@@ -6915,5 +6916,5 @@ pub const wl_subsurface = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn set_desync() void {}
+    pub fn set_desync(self: *const wl_subsurface) !void {}
 };

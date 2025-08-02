@@ -22,7 +22,6 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
     const data_reader = data_stream.reader();
     var fd_list_position: usize = 0;
 
-
     var args: Args = undefined;
 
     inline for (comptime std.meta.fieldNames(Args)) |field_name| {
@@ -55,11 +54,11 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
             std.ArrayList(u8) => {
                 field.* = try readArray(data_reader, false, self.allocator);
             },
-            wayland_types.FD => {
+            wayland_types.Fd => {
                 if (fd_list_position >= self.fd_list.len) {
                     return error.EndOfStream;
                 }
-                field.* = wayland_types.FD{
+                field.* = wayland_types.Fd{
                     .fd = self.fd_list[fd_list_position],
                 };
                 fd_list_position += 1;

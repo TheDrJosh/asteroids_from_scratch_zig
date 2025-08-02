@@ -11,26 +11,45 @@ const wayland_types = @import("wayland_types.zig");
 
 const Message = @import("Message.zig");
 
+fn lessThan(context: void, a: wayland_types.ObjectId, b: wayland_types.ObjectId) std.math.Order {
+    _ = context;
+    return std.math.order(a, b);
+}
+
 stream: WaylandStream,
 allocator: std.mem.Allocator,
 event_buffer: std.ArrayList(Message),
-// reuse_ids: std.PriorityQueue(wayland_types.ObjectId, comptime Context: type, comptime compareFn: fn(context:Context, a:T, b:T)Order)
+reuse_ids: std.PriorityQueue(wayland_types.ObjectId, void, lessThan),
+next_id: wayland_types.ObjectId,
+
+pub const display_id: wayland_types.ObjectId = 1;
 
 pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
     return WaylandRuntime{
         .stream = try WaylandStream.init(allocator),
         .allocator = allocator,
         .event_buffer = std.ArrayList(Message).init(allocator),
+        .reuse_ids = std.PriorityQueue(wayland_types.ObjectId, void, lessThan).init(allocator, {}),
+        .next_id = 2,
     };
 }
 
 pub fn deinit(self: *const WaylandRuntime) void {
     self.stream.deinit();
+    self.reuse_ids.deinit();
 
     for (self.event_buffer.items) |msg| {
         msg.deinit();
     }
     self.event_buffer.deinit();
+}
+
+pub fn getId(self: *WaylandRuntime) wayland_types.ObjectId {
+    return self.reuse_ids.removeOrNull() orelse blk: {
+        const id = self.next_id;
+        self.next_id += 1;
+        break :blk id;
+    };
 }
 
 fn writeArray(writer: std.io.FixedBufferStream([]const u8).Writer, data: []const u8, is_string: bool) !void {
@@ -62,7 +81,7 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
 
         switch (@TypeOf(@field(args, field_name))) {
             u32, i32 => {
-                try message_writer.writeInt(i32, field, native_endian);
+                try message_writer.writeInt(@TypeOf(@field(args, field_name)), field, native_endian);
             },
             wayland_types.Fixed => {
                 try message_writer.writeInt(u32, @bitCast(field), native_endian);
@@ -82,7 +101,7 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
             std.ArrayList(u8) => {
                 try writeArray(message_writer, field.items, false);
             },
-            wayland_types.FD => {
+            wayland_types.Fd => {
                 try fd_list.append(field);
             },
             else => |T| {

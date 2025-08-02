@@ -1,4 +1,5 @@
-const WaylandRuntime = @import("../runtime.zig").WaylandRuntime;
+const WaylandRuntime = @import("../WaylandRuntime.zig");
+const wayland_types = @import("../wayland_types.zig");
 
 /// # zxdg_decoration_manager_v1
 /// 
@@ -53,7 +54,7 @@ pub const zxdg_decoration_manager_v1 = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const zxdg_decoration_manager_v1) !void {}
 
     /// # get_toplevel_decoration
     /// 
@@ -94,7 +95,7 @@ pub const zxdg_decoration_manager_v1 = struct {
     ///     xdg_toplevel
     /// 
     /// 
-    pub fn get_toplevel_decoration() void {}
+    pub fn get_toplevel_decoration(self: *const zxdg_decoration_manager_v1, toplevel: wayland_types.ObjectId) !void {}
 };
 
 /// # zxdg_toplevel_decoration_v1
@@ -156,7 +157,7 @@ pub const zxdg_toplevel_decoration_v1 = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy() void {}
+    pub fn destroy(self: *const zxdg_toplevel_decoration_v1) !void {}
 
     /// # set_mode
     /// 
@@ -205,7 +206,7 @@ pub const zxdg_toplevel_decoration_v1 = struct {
     ///     mode
     /// 
     /// 
-    pub fn set_mode() void {}
+    pub fn set_mode(self: *const zxdg_toplevel_decoration_v1, mode: u32) !void {}
 
     /// # unset_mode
     /// 
@@ -223,7 +224,7 @@ pub const zxdg_toplevel_decoration_v1 = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn unset_mode() void {}
+    pub fn unset_mode(self: *const zxdg_toplevel_decoration_v1) !void {}
 
     /// # configure
     /// 
@@ -258,5 +259,5 @@ pub const zxdg_toplevel_decoration_v1 = struct {
     ///     mode
     /// 
     /// 
-    pub fn on_configure() void {}
+    pub fn next_configure() void {}
 };

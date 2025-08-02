@@ -43,9 +43,8 @@ def main():
 
         zig_file = open("./src/wayland/protocols/" + protocol_name + ".zig", "w")
 
-        zig_file.write(
-            'const WaylandRuntime = @import("../runtime.zig").WaylandRuntime;\n'
-        )
+        zig_file.write('const WaylandRuntime = @import("../WaylandRuntime.zig");\n')
+        zig_file.write('const wayland_types = @import("../wayland_types.zig");\n')
 
         for interface_node in root.findall("./interface"):
             interface_name = interface_node.attrib["name"]
@@ -153,8 +152,32 @@ def main():
                 zig_file.write(
                     "    pub fn "
                     + escapeKeyword(request.attrib["name"])
-                    + "() void {}\n"
+                    + "(self: *const "
+                    + interface_name
                 )
+
+                for arg in request.findall("./arg"):
+                    if arg.attrib["type"] == "new_id":
+                        continue
+
+                    zig_file.write(", " + arg.attrib["name"] + ": ")
+
+                    if arg.attrib["type"] == "int":
+                        zig_file.write("i32")
+                    elif arg.attrib["type"] == "uint":
+                        zig_file.write("u32")
+                    elif arg.attrib["type"] == "object":
+                        zig_file.write("wayland_types.ObjectId")
+                    elif arg.attrib["type"] == "string":
+                        zig_file.write("wayland_types.String")
+                    elif arg.attrib["type"] == "array":
+                        zig_file.write("[]const u8")
+                    elif arg.attrib["type"] == "fd":
+                        zig_file.write("wayland_types.Fd")
+                    else:
+                        print("unsuported type. type = " + arg.attrib["type"])
+
+                zig_file.write(") !void {}\n")
 
             for event in interface_node.findall("./event"):
                 description = getDescription(event)
@@ -195,7 +218,7 @@ def main():
 
                 zig_file.write(
                     "    pub fn "
-                    + escapeKeyword("on_" + event.attrib["name"])
+                    + escapeKeyword("next_" + event.attrib["name"])
                     + "() void {}\n"
                 )
 

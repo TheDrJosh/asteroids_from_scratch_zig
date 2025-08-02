@@ -34,6 +34,6 @@ pub const String = struct {
     data: std.ArrayList(u8),
 };
 
-pub const FD = struct {
+pub const Fd = struct {
     fd: std.posix.fd_t,
 };
