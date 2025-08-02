@@ -4,31 +4,10 @@ const unix_domain_socket = @import("unix_domain_socket.zig");
 
 const native_endian = builtin.cpu.arch.endian();
 
-const WaylandObject = @import("WaylandObject.zig");
-
-pub const MessageInfo = struct {
-    object: WaylandObject.ObjectId,
-    opcode: u16,
-};
-
-const Header = packed struct(u32) {
-    opcode: u16,
-    size: u16,
-};
-
-pub const Message = struct {
-    info: MessageInfo,
-    data: []const u8,
-    fd_list: []const std.os.linux.fd_t,
-    allocator: std.mem.Allocator,
-
-    pub fn deinit(self: *const Message) void {
-        self.allocator.free(self.data);
-        self.allocator.free(self.fd_list);
-    }
-};
+const Message = @import("Message.zig");
 
 pub const WaylandStream = @This();
+const wayland_types = @import("wayland_types.zig");
 
 socket: std.posix.socket_t,
 allocator: std.mem.Allocator,
@@ -45,7 +24,7 @@ pub fn init(allocator: std.mem.Allocator) !WaylandStream {
         const xdg_runtime_dir_env = envs.get("XDG_RUNTIME_DIR") orelse return error.unable_to_connect_to_wayland_server;
         const wayland_display_env = envs.get("WAYLAND_DISPLAY") orelse "wayland-0";
 
-        const addr = try std.fmt.allocPrint(allocator, "{s}{s}", .{ xdg_runtime_dir_env, wayland_display_env });
+        const addr = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ xdg_runtime_dir_env, wayland_display_env });
         defer allocator.free(addr);
 
         try unix_domain_socket.connectUnixSocket(socket, addr);
@@ -65,25 +44,40 @@ pub fn deinit(self: *const WaylandStream) void {
 
 const MAX_FD_RECV: usize = 32;
 
+const Header = packed struct(u32) {
+    opcode: u16,
+    size: u16,
+};
+
 pub fn next(self: *const WaylandStream) !?Message {
-    const info_len = @sizeOf(WaylandObject.ObjectId) + @sizeOf(MessageInfo.Header);
+    const info_len = @sizeOf(wayland_types.ObjectId) + @sizeOf(Header);
 
-    const header_buf = [1]u8{0} ** info_len;
-    const fds_buf = [1]std.os.linux.fd_t{0} ** MAX_FD_RECV;
+    var header_buf = [1]u8{0} ** info_len;
+    var fds_buf = [1]std.os.linux.fd_t{0} ** MAX_FD_RECV;
 
-    const header_len = try unix_domain_socket.receiveFileDescriptors(self.socket, &header_buf, &fds_buf);
+    var bytes_available: c_int = 0;
 
-    std.debug.assert(header_len.bytes_received == info_len);
+    if (std.os.linux.ioctl(self.socket, std.os.linux.T.FIONREAD, @intFromPtr(&bytes_available)) == -1) {
+        return error.ioctl;
+    }
 
-    const id = std.mem.readInt(WaylandObject.ObjectId, header_buf[0..@sizeOf(WaylandObject.ObjectId)], native_endian);
-    const header: Header = @bitCast(std.mem.readInt(u32, header_buf[@sizeOf(WaylandObject.ObjectId)..], native_endian));
+    if (bytes_available < @sizeOf(wayland_types.ObjectId)) {
+        return null;
+    }
 
-    const body_buf = try self.allocator.alloc(u8, header.size - info_len);
+    const header_len = try unix_domain_socket.recvFdsWithData(self.socket, &fds_buf, &header_buf);
+
+    std.debug.assert(header_len.data_received == info_len);
+
+    const id = std.mem.readInt(wayland_types.ObjectId, header_buf[0..@sizeOf(wayland_types.ObjectId)], native_endian);
+    const header: Header = @bitCast(std.mem.readInt(u32, header_buf[@sizeOf(wayland_types.ObjectId)..], native_endian));
+
+    const body_buf = try self.allocator.alloc(u8, @as(usize, @intCast(@as(i32, @intCast(header.size)) - info_len)));
     errdefer self.allocator.free(body_buf);
 
-    const body_len = try unix_domain_socket.receiveFileDescriptors(self.socket, body_buf, fds_buf[header_len.fds_received..]);
+    const body_len = try unix_domain_socket.recvFdsWithData(self.socket, fds_buf[header_len.fds_received..], body_buf);
 
-    std.debug.assert(body_len.bytes_received == (header.size - info_len));
+    std.debug.assert(body_len.data_received == (header.size - info_len));
     std.debug.assert((body_len.fds_received + header_len.fds_received) < MAX_FD_RECV);
 
     const fd_buf_alloc = try self.allocator.alloc(std.os.linux.fd_t, body_len.fds_received + header_len.fds_received);
@@ -103,16 +97,16 @@ pub fn next(self: *const WaylandStream) !?Message {
 }
 
 pub fn send(self: *const WaylandStream, message: Message) !void {
-    var object_id_bytes = [_]u8{0} ** @sizeOf(WaylandObject.ObjectId);
-    std.mem.writeInt(WaylandObject.ObjectId, &object_id_bytes, message.info.object, native_endian);
+    var object_id_bytes = [_]u8{0} ** @sizeOf(wayland_types.ObjectId);
+    std.mem.writeInt(wayland_types.ObjectId, &object_id_bytes, message.info.object, native_endian);
     var header_bytes = [_]u8{0} ** @sizeOf(Header);
-    std.mem.writeInt(u32, &object_id_bytes, @bitCast(Header{
+    std.mem.writeInt(u32, &header_bytes, @bitCast(Header{
         .opcode = message.info.opcode,
         .size = @intCast(message.data.len + 8),
     }), native_endian);
 
-    std.debug.assert(try unix_domain_socket.sendData(self.socket, &object_id_bytes) == object_id_bytes.len);
-    std.debug.assert(try unix_domain_socket.sendData(self.socket, &header_bytes) == header_bytes.len);
+    std.debug.assert(try std.posix.send(self.socket, &object_id_bytes, 0) == object_id_bytes.len);
+    std.debug.assert(try std.posix.send(self.socket, &header_bytes, 0) == header_bytes.len);
 
-    try unix_domain_socket.sendFileDescriptors(self.socket, message.fd_list, message.data);
+    try unix_domain_socket.sendFdsWithData(self.socket, message.fd_list, message.data);
 }

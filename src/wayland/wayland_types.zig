@@ -1,5 +1,7 @@
 const std = @import("std");
 
+pub const ObjectId = u32;
+
 pub const NewId = struct {
     interface: []const u8,
     allocator: std.mem.Allocator,

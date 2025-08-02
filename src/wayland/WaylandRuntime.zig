@@ -4,24 +4,33 @@ const builtin = @import("builtin");
 const native_endian = builtin.cpu.arch.endian();
 
 const WaylandStream = @import("WaylandStream.zig");
-const WaylandObject = @import("WaylandObject.zig");
 
 const WaylandRuntime = @This();
 
 const wayland_types = @import("wayland_types.zig");
 
+const Message = @import("Message.zig");
+
 stream: WaylandStream,
 allocator: std.mem.Allocator,
+event_buffer: std.ArrayList(Message),
+// reuse_ids: std.PriorityQueue(wayland_types.ObjectId, comptime Context: type, comptime compareFn: fn(context:Context, a:T, b:T)Order)
 
 pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
     return WaylandRuntime{
         .stream = try WaylandStream.init(allocator),
         .allocator = allocator,
+        .event_buffer = std.ArrayList(Message).init(allocator),
     };
 }
 
 pub fn deinit(self: *const WaylandRuntime) void {
     self.stream.deinit();
+
+    for (self.event_buffer.items) |msg| {
+        msg.deinit();
+    }
+    self.event_buffer.deinit();
 }
 
 fn writeArray(writer: std.io.FixedBufferStream([]const u8).Writer, data: []const u8, is_string: bool) !void {
@@ -44,6 +53,7 @@ fn writeArray(writer: std.io.FixedBufferStream([]const u8).Writer, data: []const
 pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, args: anytype) !void {
     var message = std.ArrayList(u8).init(self.allocator);
     defer message.deinit();
+    const message_writer = message.writer();
     var fd_list = std.ArrayList(std.posix.fd_t).init(self.allocator);
     defer fd_list.deinit();
 
@@ -52,25 +62,25 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
 
         switch (@TypeOf(@field(args, field_name))) {
             u32, i32 => {
-                try message.writer().writeInt(i32, field, native_endian);
+                try message_writer.writeInt(i32, field, native_endian);
             },
             wayland_types.Fixed => {
-                try message.writer().writeInt(u32, @bitCast(field), native_endian);
+                try message_writer.writeInt(u32, @bitCast(field), native_endian);
             },
             wayland_types.NewId => {
-                try writeArray(message.writer(), field.interface, true);
+                try writeArray(message_writer, field.interface, true);
 
-                try message.writer().writeInt(u32, field.version, native_endian);
-                try message.writer().writeInt(u32, field.id, native_endian);
+                try message_writer.writeInt(u32, field.version, native_endian);
+                try message_writer.writeInt(u32, field.id, native_endian);
             },
             wayland_types.String => {
-                try writeArray(message.writer(), field.data, true);
+                try writeArray(message_writer, field.data, true);
             },
             []const u8, []u8 => {
-                try writeArray(message.writer(), field, false);
+                try writeArray(message_writer, field, false);
             },
             std.ArrayList(u8) => {
-                try writeArray(message.writer(), field.items, false);
+                try writeArray(message_writer, field.items, false);
             },
             wayland_types.FD => {
                 try fd_list.append(field);
@@ -79,7 +89,7 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
                 switch (@typeInfo(T)) {
                     .@"enum" => |e| {
                         if (e.tag_type == u32 or e.tag_type == i32) {
-                            try message.writer().writeInt(u32, @bitCast(field), native_endian);
+                            try message_writer.writeInt(u32, @bitCast(field), native_endian);
                         } else {
                             @compileError("invalid enum arg. enum must have 32 bit tag type");
                         }
@@ -93,7 +103,9 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
     }
 
     const message_data = try message.toOwnedSlice();
+    defer self.allocator.free(message_data);
     const message_fd_list = try fd_list.toOwnedSlice();
+    defer self.allocator.free(message_fd_list);
 
     try self.stream.send(.{
         .info = .{
@@ -106,102 +118,43 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
     });
 }
 
-fn readArray(reader: std.io.FixedBufferStream([]const u8).Reader, is_string: bool, allocator: std.mem.Allocator) !std.ArrayList(u8) {
-    const l = try reader.readInt(u32, native_endian);
-
-    const len = if (is_string) l - 1 else l;
-
-    const arr = std.ArrayList(u8).init(allocator);
-    try reader.readAllArrayList(&arr, len);
-    std.debug.assert(len == arr.items.len);
-
-    if (is_string) {
-        try reader.readByte();
-    }
-
-    if (l % @sizeOf(u32) != 0) {
-        const padding_len = @sizeOf(u32) - (l % @sizeOf(u32));
-        for (0..padding_len) |_| {
-            try reader.readByte();
-        }
-    }
-}
-
-pub fn next(self: *const WaylandRuntime, Args: type) !?Message(Args) {
-    const message = try self.stream.next() orelse return null;
-    defer message.deinit();
-
-    var data_stream = std.io.fixedBufferStream(message.data);
-    const data_reader = data_stream.reader();
-    var fd_list_position = 0;
-
-    var args = std.mem.zeroes(Args);
-
-    inline for (comptime std.meta.fieldNames(Args)) |field_name| {
-        const field = &@field(args, field_name);
-
-        const T = @TypeOf(@field(args, field_name));
-
-        switch (T) {
-            u32, i32 => {
-                field.* = try data_reader.readInt(T, native_endian);
-            },
-            wayland_types.Fixed => {
-                field.* = @bitCast(try data_reader.readInt(u32, native_endian));
-            },
-            wayland_types.NewId => {
-                field.* = wayland_types.NewId{
-                    .interface = wayland_types.String{
-                        .data = readArray(data_reader, true, self.allocator),
-                    },
-                    .allocator = self.allocator,
-                    .version = try data_reader.readInt(u32, native_endian),
-                    .id = try data_reader.readInt(u32, native_endian),
-                };
-            },
-            wayland_types.String => {
-                field.* = wayland_types.String{
-                    .data = readArray(data_reader, true, self.allocator),
-                };
-            },
-            std.ArrayList(u8) => {
-                field.* = readArray(data_reader, false, self.allocator);
-            },
-            wayland_types.FD => {
-                if (fd_list_position >= message.fd_list.len) {
-                    return error.EndOfStream;
-                }
-                field.* = wayland_types.FD{
-                    .fd = message.fd_list[fd_list_position],
-                };
-                fd_list_position += 1;
-            },
-            else => |E| {
-                switch (@typeInfo(E)) {
-                    .@"enum" => |e| {
-                        if (e.tag_type == u32 or e.tag_type == i32) {
-                            field.* = @bitCast(try data_reader.readInt(u32, native_endian));
-                        } else {
-                            @compileError("invalid enum arg. enum must have 32 bit tag type");
-                        }
-                    },
-                    else => {
-                        @compileError("invalid arg");
-                    },
-                }
-            },
+pub fn next(self: *WaylandRuntime, object: wayland_types.ObjectId, opcode: u16, Args: type) !?Message.TypedMessage(Args) {
+    for (0..self.event_buffer.items.len) |i| {
+        if (self.event_buffer.items[i].info.object == object and self.event_buffer.items[i].info.opcode == opcode) {
+            const msg = self.event_buffer.orderedRemove(i);
+            defer msg.deinit();
+            return try msg.parse(Args);
         }
     }
 
-    return .{
-        .info = message.info,
-        .args = args,
-    };
-}
+    while (try self.stream.next()) |msg| {
+        if (msg.info.object == 1) {
+            defer msg.deinit();
+            switch (msg.info.opcode) {
+                0 => {
+                    const parsed_msg = try msg.parse(struct { object_id: wayland_types.ObjectId, code: u32, message: wayland_types.String });
+                    defer parsed_msg.args.message.data.deinit();
 
-pub fn Message(Args: type) type {
-    return struct {
-        info: WaylandStream.MessageInfo,
-        args: Args,
-    };
+                    std.debug.print("Wayland Error recived on object({}), code({}). {s}\n", .{ parsed_msg.args.object_id, parsed_msg.args.code, parsed_msg.args.message.data.items });
+                },
+                1 => {
+                    const parsed_msg = try msg.parse(struct { id: u32 });
+                    _ = parsed_msg;
+                    //TODO -
+                },
+                else => {
+                    return error.unexpected_opcode_from_wl_display;
+                },
+            }
+        } else {
+            if (msg.info.object == object and msg.info.opcode == opcode) {
+                defer msg.deinit();
+                return try msg.parse(Args);
+            } else {
+                try self.event_buffer.append(msg);
+            }
+        }
+    }
+
+    return null;
 }

@@ -15,6 +15,21 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    const unix_domain_socket_lib_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    unix_domain_socket_lib_mod.link_libc = true;
+    unix_domain_socket_lib_mod.addCSourceFile(.{
+        .file = b.path("unix_domain_socket_lib/unix_domain_socket_lib.c"),
+    });
+
+    const unix_domain_socket_lib = b.addLibrary(.{
+        .name = "unix_domain_socket_lib",
+        .root_module = unix_domain_socket_lib_mod,
+    });
+
     // We will also create a module for our other entry point, 'main.zig'.
     const exe_mod = b.createModule(.{
         // `root_source_file` is the Zig "entry point" of the module. If a module
@@ -25,6 +40,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    exe_mod.linkLibrary(unix_domain_socket_lib);
+    exe_mod.addIncludePath(b.path("unix_domain_socket_lib/"));
 
     // This creates another `std.Build.Step.Compile`, but this one builds an executable
     // rather than a static library.
