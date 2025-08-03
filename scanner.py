@@ -43,6 +43,7 @@ def main():
 
         zig_file = open("./src/wayland/protocols/" + protocol_name + ".zig", "w")
 
+        zig_file.write('const std = @import("std");\n')
         zig_file.write('const WaylandRuntime = @import("../WaylandRuntime.zig");\n')
         zig_file.write('const wayland_types = @import("../wayland_types.zig");\n')
 
@@ -65,6 +66,7 @@ def main():
             zig_file.write(
                 "pub const " + escapeKeyword(interface_name) + " = struct {\n"
             )
+            zig_file.write("    pub const interface = \"" + interface_name + "\";\n")
             zig_file.write("    pub const version = " + interface_version + ";\n")
 
             zig_file.write("\n    pub const enums = struct{")
@@ -112,6 +114,8 @@ def main():
 
             zig_file.write("\n    object_id: u32,\n    runtime: *WaylandRuntime,\n")
 
+            opcode = 0
+            
             for request in interface_node.findall("./request"):
                 description = getDescription(request)
 
@@ -156,12 +160,18 @@ def main():
                     + interface_name
                 )
 
+                new_ids = []
+
                 for arg in request.findall("./arg"):
                     if arg.attrib["type"] == "new_id":
+                        if "interface" not in arg.attrib:
+                            zig_file.write(", " + arg.attrib["name"] + ": type")
+                        new_ids.append((arg.attrib["name"], arg.attrib.get("interface")))
                         continue
 
                     zig_file.write(", " + arg.attrib["name"] + ": ")
-
+                    #TODO - Enum Support
+                    #TODO - Optional support
                     if arg.attrib["type"] == "int":
                         zig_file.write("i32")
                     elif arg.attrib["type"] == "uint":
@@ -169,16 +179,66 @@ def main():
                     elif arg.attrib["type"] == "object":
                         zig_file.write("wayland_types.ObjectId")
                     elif arg.attrib["type"] == "string":
-                        zig_file.write("wayland_types.String")
+                        zig_file.write("[]const u8")
                     elif arg.attrib["type"] == "array":
                         zig_file.write("[]const u8")
+                    elif arg.attrib["type"] == "fixed":
+                        zig_file.write("wayland_types.Fixed")
                     elif arg.attrib["type"] == "fd":
-                        zig_file.write("wayland_types.Fd")
+                        zig_file.write("wayland_types.Fd")                        
                     else:
                         print("unsuported type. type = " + arg.attrib["type"])
 
-                zig_file.write(") !void {}\n")
+                zig_file.write(") !")
+                
+                if len(new_ids) == 0:
+                    zig_file.write("void")
+                else:
+                    zig_file.write("struct { ")
+                    for new_id in new_ids:
+                        if new_id[1] is None:
+                            zig_file.write(new_id[0] + ": " + new_id[0] + ", ")
+                        else:
+                            zig_file.write(new_id[0] + ": " + new_id[1] + ", ")
+                    zig_file.write("}")
+                
+                zig_file.write(" {\n")
+                
+                for new_id in new_ids:
+                    zig_file.write("        const " + new_id[0] + "_id = self.runtime.getId();\n" )
+                
+                zig_file.write("        try self.runtime.sendRequest(self.object_id, " + str(opcode) + ", .{")
+                
+                for arg in request.findall("./arg"):
+                    if arg.attrib["type"] == "string":
+                        zig_file.write("wayland_types.String{.data = " + arg.attrib["name"] + "}, ")
+                    elif arg.attrib["type"] == "new_id":
+                        if "interface" not in arg.attrib:
+                            zig_file.write("wayland_types.NewId{.interface = " + arg.attrib["name"] + ".interface, .version = " + arg.attrib["name"] + ".version, .id = " + arg.attrib["name"] + "_id, }, ")
+                        else:
+                            zig_file.write(arg.attrib["name"] + "_id, ")
+                    else:
+                     zig_file.write(arg.attrib["name"] + ", ")
+                     
+                zig_file.write("});\n")
+                
+                if len(new_ids) != 0:
+                    #TODO - len == 1 case
+                    zig_file.write("        return .{")
+                    for new_id in new_ids:
+                        if new_id[1] is not None:
+                            zig_file.write("." + new_id[0] + " = " + new_id[1] + "{.object_id = " + new_id[0] + "_id, .runtime = self.runtime}, ")
+                        else:
+                            zig_file.write("." + new_id[0] + " = " + new_id[0] + "{.object_id = " + new_id[0] + "_id, .runtime = self.runtime}, ")
+                    zig_file.write("};\n")
+                    
+                
+                zig_file.write("    }\n")
+                opcode += 1
+                
 
+                
+            opcode = 0
             for event in interface_node.findall("./event"):
                 description = getDescription(event)
 
@@ -219,8 +279,40 @@ def main():
                 zig_file.write(
                     "    pub fn "
                     + escapeKeyword("next_" + event.attrib["name"])
-                    + "() void {}\n"
+                    + "(self: *const " + interface_name + ") !?struct {"
                 )
+                
+                for arg in event.findall("./arg"):
+                    zig_file.write(arg.attrib["name"] + ": ")
+                    if arg.attrib["type"] == "int":
+                        zig_file.write("i32, ")
+                    elif arg.attrib["type"] == "uint":
+                        zig_file.write("u32, ")
+                    elif arg.attrib["type"] == "array":
+                        zig_file.write("std.ArrayList(u8), ")
+                    elif arg.attrib["type"] == "string":
+                        zig_file.write("wayland_types.String, ")
+                    elif arg.attrib["type"] == "fixed":
+                        zig_file.write("wayland_types.Fixed, ")
+                    elif arg.attrib["type"] == "object":
+                        zig_file.write("wayland_types.ObjectId, ")
+                    elif arg.attrib["type"] == "fd":
+                        zig_file.write("wayland_types.Fd, ")
+                    elif arg.attrib["type"] == "new_id":
+                        #TODO - do propperly
+                        zig_file.write("wayland_types.ObjectId, ")
+                    else:
+                        print("unsuported type. type = " + arg.attrib["type"])
+
+                        
+                
+                zig_file.write("} {\n")
+                
+                zig_file.write("        return try self.runtime.next(self.object_id, " + str(opcode) + ", @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_" + event.attrib["name"] + ")).@\"fn\".return_type.?).error_union.payload).optional.child);\n")
+                
+                zig_file.write("}\n")
+                
+                opcode += 1
 
             zig_file.write("};\n")
 

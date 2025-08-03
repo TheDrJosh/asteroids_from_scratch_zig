@@ -11,6 +11,8 @@ const wayland_types = @import("wayland_types.zig");
 
 const Message = @import("Message.zig");
 
+const wayland_protocol = @import("protocols/wayland.zig");
+
 fn lessThan(context: void, a: wayland_types.ObjectId, b: wayland_types.ObjectId) std.math.Order {
     _ = context;
     return std.math.order(a, b);
@@ -21,8 +23,6 @@ allocator: std.mem.Allocator,
 event_buffer: std.ArrayList(Message),
 reuse_ids: std.PriorityQueue(wayland_types.ObjectId, void, lessThan),
 next_id: wayland_types.ObjectId,
-
-pub const display_id: wayland_types.ObjectId = 1;
 
 pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
     return WaylandRuntime{
@@ -44,6 +44,13 @@ pub fn deinit(self: *const WaylandRuntime) void {
     self.event_buffer.deinit();
 }
 
+pub fn display(self: *WaylandRuntime) wayland_protocol.wl_display {
+    return .{
+        .object_id = 1,
+        .runtime = self,
+    };
+}
+
 pub fn getId(self: *WaylandRuntime) wayland_types.ObjectId {
     return self.reuse_ids.removeOrNull() orelse blk: {
         const id = self.next_id;
@@ -52,10 +59,10 @@ pub fn getId(self: *WaylandRuntime) wayland_types.ObjectId {
     };
 }
 
-fn writeArray(writer: std.io.FixedBufferStream([]const u8).Writer, data: []const u8, is_string: bool) !void {
+fn writeArray(writer: std.ArrayList(u8).Writer, data: []const u8, is_string: bool) !void {
     const len = if (is_string) data.len + 1 else data.len;
 
-    try writer.writeAll(len);
+    try writer.writeInt(u32, @intCast(len), native_endian);
 
     try writer.writeAll(data);
 
@@ -102,7 +109,7 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
                 try writeArray(message_writer, field.items, false);
             },
             wayland_types.Fd => {
-                try fd_list.append(field);
+                try fd_list.append(field.fd);
             },
             else => |T| {
                 switch (@typeInfo(T)) {
@@ -137,12 +144,12 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
     });
 }
 
-pub fn next(self: *WaylandRuntime, object: wayland_types.ObjectId, opcode: u16, Args: type) !?Message.TypedMessage(Args) {
+pub fn next(self: *WaylandRuntime, object: wayland_types.ObjectId, opcode: u16, Args: type) !?Args {
     for (0..self.event_buffer.items.len) |i| {
         if (self.event_buffer.items[i].info.object == object and self.event_buffer.items[i].info.opcode == opcode) {
             const msg = self.event_buffer.orderedRemove(i);
             defer msg.deinit();
-            return try msg.parse(Args);
+            return (try msg.parse(Args)).args;
         }
     }
 
@@ -158,8 +165,8 @@ pub fn next(self: *WaylandRuntime, object: wayland_types.ObjectId, opcode: u16, 
                 },
                 1 => {
                     const parsed_msg = try msg.parse(struct { id: u32 });
-                    _ = parsed_msg;
-                    //TODO -
+
+                    try self.reuse_ids.add(parsed_msg.args.id);
                 },
                 else => {
                     return error.unexpected_opcode_from_wl_display;
@@ -168,7 +175,7 @@ pub fn next(self: *WaylandRuntime, object: wayland_types.ObjectId, opcode: u16, 
         } else {
             if (msg.info.object == object and msg.info.opcode == opcode) {
                 defer msg.deinit();
-                return try msg.parse(Args);
+                return (try msg.parse(Args)).args;
             } else {
                 try self.event_buffer.append(msg);
             }

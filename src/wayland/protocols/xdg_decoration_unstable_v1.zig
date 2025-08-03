@@ -1,3 +1,4 @@
+const std = @import("std");
 const WaylandRuntime = @import("../WaylandRuntime.zig");
 const wayland_types = @import("../wayland_types.zig");
 
@@ -33,6 +34,7 @@ const wayland_types = @import("../wayland_types.zig");
 ///       interface version number is reset.
 ///     
 pub const zxdg_decoration_manager_v1 = struct {
+    pub const interface = "zxdg_decoration_manager_v1";
     pub const version = 1;
 
     pub const enums = struct{    };
@@ -54,7 +56,9 @@ pub const zxdg_decoration_manager_v1 = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy(self: *const zxdg_decoration_manager_v1) !void {}
+    pub fn destroy(self: *const zxdg_decoration_manager_v1) !void {
+        try self.runtime.sendRequest(self.object_id, 0, .{});
+    }
 
     /// # get_toplevel_decoration
     /// 
@@ -95,7 +99,11 @@ pub const zxdg_decoration_manager_v1 = struct {
     ///     xdg_toplevel
     /// 
     /// 
-    pub fn get_toplevel_decoration(self: *const zxdg_decoration_manager_v1, toplevel: wayland_types.ObjectId) !void {}
+    pub fn get_toplevel_decoration(self: *const zxdg_decoration_manager_v1, toplevel: wayland_types.ObjectId) !struct { id: zxdg_toplevel_decoration_v1, } {
+        const id_id = self.runtime.getId();
+        try self.runtime.sendRequest(self.object_id, 1, .{id_id, toplevel, });
+        return .{.id = zxdg_toplevel_decoration_v1{.object_id = id_id, .runtime = self.runtime}, };
+    }
 };
 
 /// # zxdg_toplevel_decoration_v1
@@ -114,6 +122,7 @@ pub const zxdg_decoration_manager_v1 = struct {
 ///       xdg_toplevel.
 ///     
 pub const zxdg_toplevel_decoration_v1 = struct {
+    pub const interface = "zxdg_toplevel_decoration_v1";
     pub const version = 1;
 
     pub const enums = struct{
@@ -157,7 +166,9 @@ pub const zxdg_toplevel_decoration_v1 = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy(self: *const zxdg_toplevel_decoration_v1) !void {}
+    pub fn destroy(self: *const zxdg_toplevel_decoration_v1) !void {
+        try self.runtime.sendRequest(self.object_id, 0, .{});
+    }
 
     /// # set_mode
     /// 
@@ -206,7 +217,9 @@ pub const zxdg_toplevel_decoration_v1 = struct {
     ///     mode
     /// 
     /// 
-    pub fn set_mode(self: *const zxdg_toplevel_decoration_v1, mode: u32) !void {}
+    pub fn set_mode(self: *const zxdg_toplevel_decoration_v1, mode: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 1, .{mode, });
+    }
 
     /// # unset_mode
     /// 
@@ -224,7 +237,9 @@ pub const zxdg_toplevel_decoration_v1 = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn unset_mode(self: *const zxdg_toplevel_decoration_v1) !void {}
+    pub fn unset_mode(self: *const zxdg_toplevel_decoration_v1) !void {
+        try self.runtime.sendRequest(self.object_id, 2, .{});
+    }
 
     /// # configure
     /// 
@@ -259,5 +274,7 @@ pub const zxdg_toplevel_decoration_v1 = struct {
     ///     mode
     /// 
     /// 
-    pub fn next_configure() void {}
+    pub fn next_configure(self: *const zxdg_toplevel_decoration_v1) !?struct {mode: u32, } {
+        return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 };

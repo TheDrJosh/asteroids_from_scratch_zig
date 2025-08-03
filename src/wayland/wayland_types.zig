@@ -4,13 +4,8 @@ pub const ObjectId = u32;
 
 pub const NewId = struct {
     interface: []const u8,
-    allocator: std.mem.Allocator,
     version: u32,
     id: u32,
-
-    pub fn deinit(self: *const NewId) void {
-        self.allocator.free(self.interface);
-    }
 };
 
 pub const Fixed = packed struct(u32) {

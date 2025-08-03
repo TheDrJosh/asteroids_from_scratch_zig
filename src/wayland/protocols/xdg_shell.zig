@@ -1,3 +1,4 @@
+const std = @import("std");
 const WaylandRuntime = @import("../WaylandRuntime.zig");
 const wayland_types = @import("../wayland_types.zig");
 
@@ -16,6 +17,7 @@ const wayland_types = @import("../wayland_types.zig");
 ///       creating transient windows such as popup menus.
 ///     
 pub const xdg_wm_base = struct {
+    pub const interface = "xdg_wm_base";
     pub const version = 7;
 
     pub const enums = struct{
@@ -50,7 +52,9 @@ pub const xdg_wm_base = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy(self: *const xdg_wm_base) !void {}
+    pub fn destroy(self: *const xdg_wm_base) !void {
+        try self.runtime.sendRequest(self.object_id, 0, .{});
+    }
 
     /// # create_positioner
     /// 
@@ -77,7 +81,11 @@ pub const xdg_wm_base = struct {
     ///     xdg_positioner
     /// 
     /// 
-    pub fn create_positioner(self: *const xdg_wm_base) !void {}
+    pub fn create_positioner(self: *const xdg_wm_base) !struct { id: xdg_positioner, } {
+        const id_id = self.runtime.getId();
+        try self.runtime.sendRequest(self.object_id, 1, .{id_id, });
+        return .{.id = xdg_positioner{.object_id = id_id, .runtime = self.runtime}, };
+    }
 
     /// # get_xdg_surface
     /// 
@@ -124,7 +132,11 @@ pub const xdg_wm_base = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn get_xdg_surface(self: *const xdg_wm_base, surface: wayland_types.ObjectId) !void {}
+    pub fn get_xdg_surface(self: *const xdg_wm_base, surface: wayland_types.ObjectId) !struct { id: xdg_surface, } {
+        const id_id = self.runtime.getId();
+        try self.runtime.sendRequest(self.object_id, 2, .{id_id, surface, });
+        return .{.id = xdg_surface{.object_id = id_id, .runtime = self.runtime}, };
+    }
 
     /// # pong
     /// 
@@ -151,7 +163,9 @@ pub const xdg_wm_base = struct {
     ///     serial of the ping event
     /// 
     /// 
-    pub fn pong(self: *const xdg_wm_base, serial: u32) !void {}
+    pub fn pong(self: *const xdg_wm_base, serial: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 3, .{serial, });
+    }
 
     /// # ping
     /// 
@@ -188,7 +202,9 @@ pub const xdg_wm_base = struct {
     ///     pass this to the pong request
     /// 
     /// 
-    pub fn next_ping() void {}
+    pub fn next_ping(self: *const xdg_wm_base) !?struct {serial: u32, } {
+        return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_ping)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 };
 
 /// # xdg_positioner
@@ -220,6 +236,7 @@ pub const xdg_wm_base = struct {
 ///       positioning a surface raises an invalid_positioner error.
 ///     
 pub const xdg_positioner = struct {
+    pub const interface = "xdg_positioner";
     pub const version = 7;
 
     pub const enums = struct{
@@ -408,7 +425,9 @@ pub const xdg_positioner = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy(self: *const xdg_positioner) !void {}
+    pub fn destroy(self: *const xdg_positioner) !void {
+        try self.runtime.sendRequest(self.object_id, 0, .{});
+    }
 
     /// # set_size
     /// 
@@ -447,7 +466,9 @@ pub const xdg_positioner = struct {
     ///     height of positioned rectangle
     /// 
     /// 
-    pub fn set_size(self: *const xdg_positioner, width: i32, height: i32) !void {}
+    pub fn set_size(self: *const xdg_positioner, width: i32, height: i32) !void {
+        try self.runtime.sendRequest(self.object_id, 1, .{width, height, });
+    }
 
     /// # set_anchor_rect
     /// 
@@ -511,7 +532,9 @@ pub const xdg_positioner = struct {
     ///     height of anchor rectangle
     /// 
     /// 
-    pub fn set_anchor_rect(self: *const xdg_positioner, x: i32, y: i32, width: i32, height: i32) !void {}
+    pub fn set_anchor_rect(self: *const xdg_positioner, x: i32, y: i32, width: i32, height: i32) !void {
+        try self.runtime.sendRequest(self.object_id, 2, .{x, y, width, height, });
+    }
 
     /// # set_anchor
     /// 
@@ -545,7 +568,9 @@ pub const xdg_positioner = struct {
     ///     anchor
     /// 
     /// 
-    pub fn set_anchor(self: *const xdg_positioner, anchor: u32) !void {}
+    pub fn set_anchor(self: *const xdg_positioner, anchor: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 3, .{anchor, });
+    }
 
     /// # set_gravity
     /// 
@@ -580,7 +605,9 @@ pub const xdg_positioner = struct {
     ///     gravity
     /// 
     /// 
-    pub fn set_gravity(self: *const xdg_positioner, gravity: u32) !void {}
+    pub fn set_gravity(self: *const xdg_positioner, gravity: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 4, .{gravity, });
+    }
 
     /// # set_constraint_adjustment
     /// 
@@ -621,7 +648,9 @@ pub const xdg_positioner = struct {
     ///     constraint_adjustment
     /// 
     /// 
-    pub fn set_constraint_adjustment(self: *const xdg_positioner, constraint_adjustment: u32) !void {}
+    pub fn set_constraint_adjustment(self: *const xdg_positioner, constraint_adjustment: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 5, .{constraint_adjustment, });
+    }
 
     /// # set_offset
     /// 
@@ -666,7 +695,9 @@ pub const xdg_positioner = struct {
     ///     surface position y offset
     /// 
     /// 
-    pub fn set_offset(self: *const xdg_positioner, x: i32, y: i32) !void {}
+    pub fn set_offset(self: *const xdg_positioner, x: i32, y: i32) !void {
+        try self.runtime.sendRequest(self.object_id, 6, .{x, y, });
+    }
 
     /// # set_reactive
     /// 
@@ -686,7 +717,9 @@ pub const xdg_positioner = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn set_reactive(self: *const xdg_positioner) !void {}
+    pub fn set_reactive(self: *const xdg_positioner) !void {
+        try self.runtime.sendRequest(self.object_id, 7, .{});
+    }
 
     /// # set_parent_size
     /// 
@@ -727,7 +760,9 @@ pub const xdg_positioner = struct {
     ///     future window geometry height of parent
     /// 
     /// 
-    pub fn set_parent_size(self: *const xdg_positioner, parent_width: i32, parent_height: i32) !void {}
+    pub fn set_parent_size(self: *const xdg_positioner, parent_width: i32, parent_height: i32) !void {
+        try self.runtime.sendRequest(self.object_id, 8, .{parent_width, parent_height, });
+    }
 
     /// # set_parent_configure
     /// 
@@ -755,7 +790,9 @@ pub const xdg_positioner = struct {
     ///     serial of parent configure event
     /// 
     /// 
-    pub fn set_parent_configure(self: *const xdg_positioner, serial: u32) !void {}
+    pub fn set_parent_configure(self: *const xdg_positioner, serial: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 9, .{serial, });
+    }
 };
 
 /// # xdg_surface
@@ -816,6 +853,7 @@ pub const xdg_positioner = struct {
 ///       again before attaching a buffer.
 ///     
 pub const xdg_surface = struct {
+    pub const interface = "xdg_surface";
     pub const version = 7;
 
     pub const enums = struct{
@@ -847,7 +885,9 @@ pub const xdg_surface = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy(self: *const xdg_surface) !void {}
+    pub fn destroy(self: *const xdg_surface) !void {
+        try self.runtime.sendRequest(self.object_id, 0, .{});
+    }
 
     /// # get_toplevel
     /// 
@@ -876,7 +916,11 @@ pub const xdg_surface = struct {
     ///     xdg_toplevel
     /// 
     /// 
-    pub fn get_toplevel(self: *const xdg_surface) !void {}
+    pub fn get_toplevel(self: *const xdg_surface) !struct { id: xdg_toplevel, } {
+        const id_id = self.runtime.getId();
+        try self.runtime.sendRequest(self.object_id, 1, .{id_id, });
+        return .{.id = xdg_toplevel{.object_id = id_id, .runtime = self.runtime}, };
+    }
 
     /// # get_popup
     /// 
@@ -932,7 +976,11 @@ pub const xdg_surface = struct {
     ///     xdg_positioner
     /// 
     /// 
-    pub fn get_popup(self: *const xdg_surface, parent: wayland_types.ObjectId, positioner: wayland_types.ObjectId) !void {}
+    pub fn get_popup(self: *const xdg_surface, parent: wayland_types.ObjectId, positioner: wayland_types.ObjectId) !struct { id: xdg_popup, } {
+        const id_id = self.runtime.getId();
+        try self.runtime.sendRequest(self.object_id, 2, .{id_id, parent, positioner, });
+        return .{.id = xdg_popup{.object_id = id_id, .runtime = self.runtime}, };
+    }
 
     /// # set_window_geometry
     /// 
@@ -1007,7 +1055,9 @@ pub const xdg_surface = struct {
     ///     int
     /// 
     /// 
-    pub fn set_window_geometry(self: *const xdg_surface, x: i32, y: i32, width: i32, height: i32) !void {}
+    pub fn set_window_geometry(self: *const xdg_surface, x: i32, y: i32, width: i32, height: i32) !void {
+        try self.runtime.sendRequest(self.object_id, 3, .{x, y, width, height, });
+    }
 
     /// # ack_configure
     /// 
@@ -1063,7 +1113,9 @@ pub const xdg_surface = struct {
     ///     the serial from the configure event
     /// 
     /// 
-    pub fn ack_configure(self: *const xdg_surface, serial: u32) !void {}
+    pub fn ack_configure(self: *const xdg_surface, serial: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 4, .{serial, });
+    }
 
     /// # configure
     /// 
@@ -1103,7 +1155,9 @@ pub const xdg_surface = struct {
     ///     serial of the configure event
     /// 
     /// 
-    pub fn next_configure() void {}
+    pub fn next_configure(self: *const xdg_surface) !?struct {serial: u32, } {
+        return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 };
 
 /// # xdg_toplevel
@@ -1137,6 +1191,7 @@ pub const xdg_surface = struct {
 ///       Attaching a null buffer to a toplevel unmaps the surface.
 ///     
 pub const xdg_toplevel = struct {
+    pub const interface = "xdg_toplevel";
     pub const version = 7;
 
     pub const enums = struct{
@@ -1399,7 +1454,9 @@ pub const xdg_toplevel = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy(self: *const xdg_toplevel) !void {}
+    pub fn destroy(self: *const xdg_toplevel) !void {
+        try self.runtime.sendRequest(self.object_id, 0, .{});
+    }
 
     /// # set_parent
     /// 
@@ -1447,7 +1504,9 @@ pub const xdg_toplevel = struct {
     ///     true
     /// 
     /// 
-    pub fn set_parent(self: *const xdg_toplevel, parent: wayland_types.ObjectId) !void {}
+    pub fn set_parent(self: *const xdg_toplevel, parent: wayland_types.ObjectId) !void {
+        try self.runtime.sendRequest(self.object_id, 1, .{parent, });
+    }
 
     /// # set_title
     /// 
@@ -1474,7 +1533,9 @@ pub const xdg_toplevel = struct {
     ///     string
     /// 
     /// 
-    pub fn set_title(self: *const xdg_toplevel, title: wayland_types.String) !void {}
+    pub fn set_title(self: *const xdg_toplevel, title: []const u8) !void {
+        try self.runtime.sendRequest(self.object_id, 2, .{wayland_types.String{.data = title}, });
+    }
 
     /// # set_app_id
     /// 
@@ -1517,7 +1578,9 @@ pub const xdg_toplevel = struct {
     ///     string
     /// 
     /// 
-    pub fn set_app_id(self: *const xdg_toplevel, app_id: wayland_types.String) !void {}
+    pub fn set_app_id(self: *const xdg_toplevel, app_id: []const u8) !void {
+        try self.runtime.sendRequest(self.object_id, 3, .{wayland_types.String{.data = app_id}, });
+    }
 
     /// # show_window_menu
     /// 
@@ -1587,7 +1650,9 @@ pub const xdg_toplevel = struct {
     ///     the y position to pop up the window menu at
     /// 
     /// 
-    pub fn show_window_menu(self: *const xdg_toplevel, seat: wayland_types.ObjectId, serial: u32, x: i32, y: i32) !void {}
+    pub fn show_window_menu(self: *const xdg_toplevel, seat: wayland_types.ObjectId, serial: u32, x: i32, y: i32) !void {
+        try self.runtime.sendRequest(self.object_id, 4, .{seat, serial, x, y, });
+    }
 
     /// # move
     /// 
@@ -1641,7 +1706,9 @@ pub const xdg_toplevel = struct {
     ///     the serial of the user event
     /// 
     /// 
-    pub fn move(self: *const xdg_toplevel, seat: wayland_types.ObjectId, serial: u32) !void {}
+    pub fn move(self: *const xdg_toplevel, seat: wayland_types.ObjectId, serial: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 5, .{seat, serial, });
+    }
 
     /// # resize
     /// 
@@ -1724,7 +1791,9 @@ pub const xdg_toplevel = struct {
     ///     resize_edge
     /// 
     /// 
-    pub fn resize(self: *const xdg_toplevel, seat: wayland_types.ObjectId, serial: u32, edges: u32) !void {}
+    pub fn resize(self: *const xdg_toplevel, seat: wayland_types.ObjectId, serial: u32, edges: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 6, .{seat, serial, edges, });
+    }
 
     /// # set_max_size
     /// 
@@ -1783,7 +1852,9 @@ pub const xdg_toplevel = struct {
     ///     int
     /// 
     /// 
-    pub fn set_max_size(self: *const xdg_toplevel, width: i32, height: i32) !void {}
+    pub fn set_max_size(self: *const xdg_toplevel, width: i32, height: i32) !void {
+        try self.runtime.sendRequest(self.object_id, 7, .{width, height, });
+    }
 
     /// # set_min_size
     /// 
@@ -1842,7 +1913,9 @@ pub const xdg_toplevel = struct {
     ///     int
     /// 
     /// 
-    pub fn set_min_size(self: *const xdg_toplevel, width: i32, height: i32) !void {}
+    pub fn set_min_size(self: *const xdg_toplevel, width: i32, height: i32) !void {
+        try self.runtime.sendRequest(self.object_id, 8, .{width, height, });
+    }
 
     /// # set_maximized
     /// 
@@ -1875,7 +1948,9 @@ pub const xdg_toplevel = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn set_maximized(self: *const xdg_toplevel) !void {}
+    pub fn set_maximized(self: *const xdg_toplevel) !void {
+        try self.runtime.sendRequest(self.object_id, 9, .{});
+    }
 
     /// # unset_maximized
     /// 
@@ -1910,7 +1985,9 @@ pub const xdg_toplevel = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn unset_maximized(self: *const xdg_toplevel) !void {}
+    pub fn unset_maximized(self: *const xdg_toplevel) !void {
+        try self.runtime.sendRequest(self.object_id, 10, .{});
+    }
 
     /// # set_fullscreen
     /// 
@@ -1961,7 +2038,9 @@ pub const xdg_toplevel = struct {
     ///     true
     /// 
     /// 
-    pub fn set_fullscreen(self: *const xdg_toplevel, output: wayland_types.ObjectId) !void {}
+    pub fn set_fullscreen(self: *const xdg_toplevel, output: wayland_types.ObjectId) !void {
+        try self.runtime.sendRequest(self.object_id, 11, .{output, });
+    }
 
     /// # unset_fullscreen
     /// 
@@ -1992,7 +2071,9 @@ pub const xdg_toplevel = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn unset_fullscreen(self: *const xdg_toplevel) !void {}
+    pub fn unset_fullscreen(self: *const xdg_toplevel) !void {
+        try self.runtime.sendRequest(self.object_id, 12, .{});
+    }
 
     /// # set_minimized
     /// 
@@ -2014,7 +2095,9 @@ pub const xdg_toplevel = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn set_minimized(self: *const xdg_toplevel) !void {}
+    pub fn set_minimized(self: *const xdg_toplevel) !void {
+        try self.runtime.sendRequest(self.object_id, 13, .{});
+    }
 
     /// # configure
     /// 
@@ -2065,7 +2148,9 @@ pub const xdg_toplevel = struct {
     ///     array
     /// 
     /// 
-    pub fn next_configure() void {}
+    pub fn next_configure(self: *const xdg_toplevel) !?struct {width: i32, height: i32, states: std.ArrayList(u8), } {
+        return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 
     /// # close
     /// 
@@ -2087,7 +2172,9 @@ pub const xdg_toplevel = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn next_close() void {}
+    pub fn next_close(self: *const xdg_toplevel) !?struct {} {
+        return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_close)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 
     /// # configure_bounds
     /// 
@@ -2128,7 +2215,9 @@ pub const xdg_toplevel = struct {
     ///     int
     /// 
     /// 
-    pub fn next_configure_bounds() void {}
+    pub fn next_configure_bounds(self: *const xdg_toplevel) !?struct {width: i32, height: i32, } {
+        return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure_bounds)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 
     /// # wm_capabilities
     /// 
@@ -2172,7 +2261,9 @@ pub const xdg_toplevel = struct {
     ///     array of 32-bit capabilities
     /// 
     /// 
-    pub fn next_wm_capabilities() void {}
+    pub fn next_wm_capabilities(self: *const xdg_toplevel) !?struct {capabilities: std.ArrayList(u8), } {
+        return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_wm_capabilities)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 };
 
 /// # xdg_popup
@@ -2209,6 +2300,7 @@ pub const xdg_toplevel = struct {
 ///       for the xdg_popup state to take effect.
 ///     
 pub const xdg_popup = struct {
+    pub const interface = "xdg_popup";
     pub const version = 7;
 
     pub const enums = struct{
@@ -2237,7 +2329,9 @@ pub const xdg_popup = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn destroy(self: *const xdg_popup) !void {}
+    pub fn destroy(self: *const xdg_popup) !void {
+        try self.runtime.sendRequest(self.object_id, 0, .{});
+    }
 
     /// # grab
     /// 
@@ -2312,7 +2406,9 @@ pub const xdg_popup = struct {
     ///     the serial of the user event
     /// 
     /// 
-    pub fn grab(self: *const xdg_popup, seat: wayland_types.ObjectId, serial: u32) !void {}
+    pub fn grab(self: *const xdg_popup, seat: wayland_types.ObjectId, serial: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 1, .{seat, serial, });
+    }
 
     /// # reposition
     /// 
@@ -2369,7 +2465,9 @@ pub const xdg_popup = struct {
     ///     reposition request token
     /// 
     /// 
-    pub fn reposition(self: *const xdg_popup, positioner: wayland_types.ObjectId, token: u32) !void {}
+    pub fn reposition(self: *const xdg_popup, positioner: wayland_types.ObjectId, token: u32) !void {
+        try self.runtime.sendRequest(self.object_id, 2, .{positioner, token, });
+    }
 
     /// # configure
     /// 
@@ -2435,7 +2533,9 @@ pub const xdg_popup = struct {
     ///     window geometry height
     /// 
     /// 
-    pub fn next_configure() void {}
+    pub fn next_configure(self: *const xdg_popup) !?struct {x: i32, y: i32, width: i32, height: i32, } {
+        return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 
     /// # popup_done
     /// 
@@ -2452,7 +2552,9 @@ pub const xdg_popup = struct {
     /// ## Args 
     /// 
     /// 
-    pub fn next_popup_done() void {}
+    pub fn next_popup_done(self: *const xdg_popup) !?struct {} {
+        return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_popup_done)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 
     /// # repositioned
     /// 
@@ -2491,5 +2593,7 @@ pub const xdg_popup = struct {
     ///     reposition request token
     /// 
     /// 
-    pub fn next_repositioned() void {}
+    pub fn next_repositioned(self: *const xdg_popup) !?struct {token: u32, } {
+        return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_repositioned)).@"fn".return_type.?).error_union.payload).optional.child);
+}
 };
