@@ -1,6 +1,6 @@
 const std = @import("std");
 const WaylandRuntime = @import("../WaylandRuntime.zig");
-const wayland_types = @import("../wayland_types.zig");
+const types = @import("../types.zig");
 
 /// # zxdg_decoration_manager_v1
 /// 
@@ -99,7 +99,7 @@ pub const zxdg_decoration_manager_v1 = struct {
     ///     xdg_toplevel
     /// 
     /// 
-    pub fn get_toplevel_decoration(self: *const zxdg_decoration_manager_v1, toplevel: wayland_types.ObjectId) !struct { id: zxdg_toplevel_decoration_v1, } {
+    pub fn get_toplevel_decoration(self: *const zxdg_decoration_manager_v1, toplevel: types.ObjectId) !struct { id: zxdg_toplevel_decoration_v1, } {
         const id_id = self.runtime.getId();
         try self.runtime.sendRequest(self.object_id, 1, .{id_id, toplevel, });
         return .{.id = zxdg_toplevel_decoration_v1{.object_id = id_id, .runtime = self.runtime}, };

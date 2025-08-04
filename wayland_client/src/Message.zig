@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const wayland_types = @import("wayland_types.zig");
+const types = @import("types.zig");
 
 const native_endian = builtin.cpu.arch.endian();
 
@@ -33,12 +33,12 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
             u32, i32 => {
                 field.* = try data_reader.readInt(T, native_endian);
             },
-            wayland_types.Fixed => {
+            types.Fixed => {
                 field.* = @bitCast(try data_reader.readInt(u32, native_endian));
             },
-            wayland_types.NewId => {
-                field.* = wayland_types.NewId{
-                    .interface = wayland_types.String{
+            types.NewId => {
+                field.* = types.NewId{
+                    .interface = types.String{
                         .data = try readArray(data_reader, true, self.allocator),
                     },
                     .allocator = self.allocator,
@@ -46,19 +46,19 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
                     .id = try data_reader.readInt(u32, native_endian),
                 };
             },
-            wayland_types.String => {
-                field.* = wayland_types.String{
+            types.String => {
+                field.* = types.String{
                     .dynamic = try readArray(data_reader, true, self.allocator),
                 };
             },
             std.ArrayList(u8) => {
                 field.* = try readArray(data_reader, false, self.allocator);
             },
-            wayland_types.Fd => {
+            types.Fd => {
                 if (fd_list_position >= self.fd_list.len) {
                     return error.EndOfStream;
                 }
-                field.* = wayland_types.Fd{
+                field.* = types.Fd{
                     .fd = self.fd_list[fd_list_position],
                 };
                 fd_list_position += 1;
@@ -111,7 +111,7 @@ fn readArray(reader: std.io.FixedBufferStream([]const u8).Reader, is_string: boo
 }
 
 pub const Info = struct {
-    object: wayland_types.ObjectId,
+    object: types.ObjectId,
     opcode: u16,
 };
 

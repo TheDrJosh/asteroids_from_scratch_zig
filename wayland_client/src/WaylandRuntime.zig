@@ -7,13 +7,13 @@ const WaylandStream = @import("WaylandStream.zig");
 
 const WaylandRuntime = @This();
 
-const wayland_types = @import("wayland_types.zig");
+const types = @import("types.zig");
 
 const Message = @import("Message.zig");
 
 const wayland_protocol = @import("protocols/wayland.zig");
 
-fn lessThan(context: void, a: wayland_types.ObjectId, b: wayland_types.ObjectId) std.math.Order {
+fn lessThan(context: void, a: types.ObjectId, b: types.ObjectId) std.math.Order {
     _ = context;
     return std.math.order(a, b);
 }
@@ -21,15 +21,15 @@ fn lessThan(context: void, a: wayland_types.ObjectId, b: wayland_types.ObjectId)
 stream: WaylandStream,
 allocator: std.mem.Allocator,
 event_buffer: std.ArrayList(Message),
-reuse_ids: std.PriorityQueue(wayland_types.ObjectId, void, lessThan),
-next_id: wayland_types.ObjectId,
+reuse_ids: std.PriorityQueue(types.ObjectId, void, lessThan),
+next_id: types.ObjectId,
 
 pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
     return WaylandRuntime{
         .stream = try WaylandStream.init(allocator),
         .allocator = allocator,
         .event_buffer = std.ArrayList(Message).init(allocator),
-        .reuse_ids = std.PriorityQueue(wayland_types.ObjectId, void, lessThan).init(allocator, {}),
+        .reuse_ids = std.PriorityQueue(types.ObjectId, void, lessThan).init(allocator, {}),
         .next_id = 2,
     };
 }
@@ -51,7 +51,7 @@ pub fn display(self: *WaylandRuntime) wayland_protocol.wl_display {
     };
 }
 
-pub fn getId(self: *WaylandRuntime) wayland_types.ObjectId {
+pub fn getId(self: *WaylandRuntime) types.ObjectId {
     return self.reuse_ids.removeOrNull() orelse blk: {
         const id = self.next_id;
         self.next_id += 1;
@@ -90,16 +90,16 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
             u32, i32 => {
                 try message_writer.writeInt(@TypeOf(@field(args, field_name)), field, native_endian);
             },
-            wayland_types.Fixed => {
+            types.Fixed => {
                 try message_writer.writeInt(u32, @bitCast(field), native_endian);
             },
-            wayland_types.NewId => {
+            types.NewId => {
                 try writeArray(message_writer, field.interface.data(), true);
 
                 try message_writer.writeInt(u32, field.version, native_endian);
                 try message_writer.writeInt(u32, field.id, native_endian);
             },
-            wayland_types.String => {
+            types.String => {
                 try writeArray(message_writer, field.data(), true);
             },
             []const u8, []u8 => {
@@ -108,7 +108,7 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
             std.ArrayList(u8) => {
                 try writeArray(message_writer, field.items, false);
             },
-            wayland_types.Fd => {
+            types.Fd => {
                 try fd_list.append(field.fd);
             },
             else => |T| {
@@ -144,7 +144,7 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
     });
 }
 
-pub fn next(self: *WaylandRuntime, object: wayland_types.ObjectId, opcode: u16, Args: type) !?Args {
+pub fn next(self: *WaylandRuntime, object: types.ObjectId, opcode: u16, Args: type) !?Args {
     for (0..self.event_buffer.items.len) |i| {
         if (self.event_buffer.items[i].info.object == object and self.event_buffer.items[i].info.opcode == opcode) {
             const msg = self.event_buffer.orderedRemove(i);
@@ -158,7 +158,7 @@ pub fn next(self: *WaylandRuntime, object: wayland_types.ObjectId, opcode: u16, 
             defer msg.deinit();
             switch (msg.info.opcode) {
                 0 => {
-                    const parsed_msg = try msg.parse(struct { object_id: wayland_types.ObjectId, code: u32, message: wayland_types.String });
+                    const parsed_msg = try msg.parse(struct { object_id: types.ObjectId, code: u32, message: types.String });
                     defer parsed_msg.args.message.deinit();
 
                     std.debug.panic("Wayland Error recived on object({}), code({}). {s}\n", .{ parsed_msg.args.object_id, parsed_msg.args.code, parsed_msg.args.message.data() });

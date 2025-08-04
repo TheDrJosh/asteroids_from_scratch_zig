@@ -1,6 +1,6 @@
 const std = @import("std");
 const WaylandRuntime = @import("../WaylandRuntime.zig");
-const wayland_types = @import("../wayland_types.zig");
+const types = @import("../types.zig");
 
 /// # wl_display
 /// 
@@ -173,7 +173,7 @@ pub const wl_display = struct {
     ///     error description
     /// 
     /// 
-    pub fn next_error(self: *const wl_display) !?struct {object_id: wayland_types.ObjectId, code: u32, message: wayland_types.String, } {
+    pub fn next_error(self: *const wl_display) !?struct {object_id: types.ObjectId, code: u32, message: types.String, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_error)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -283,7 +283,7 @@ pub const wl_registry = struct {
     /// 
     pub fn bind(self: *const wl_registry, name: u32, id: type, id_version: ?u32) !struct { id: id, } {
         const id_id = self.runtime.getId();
-        try self.runtime.sendRequest(self.object_id, 0, .{name, wayland_types.NewId{.interface = wayland_types.String{.static = id.interface}, .version = id_version orelse id.version, .id = id_id, }, });
+        try self.runtime.sendRequest(self.object_id, 0, .{name, types.NewId{.interface = types.String{.static = id.interface}, .version = id_version orelse id.version, .id = id_id, }, });
         return .{.id = id{.object_id = id_id, .runtime = self.runtime}, };
     }
 
@@ -334,7 +334,7 @@ pub const wl_registry = struct {
     ///     interface version
     /// 
     /// 
-    pub fn next_global(self: *const wl_registry) !?struct {name: u32, interface: wayland_types.String, version: u32, } {
+    pub fn next_global(self: *const wl_registry) !?struct {name: u32, interface: types.String, version: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_global)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -935,7 +935,7 @@ pub const wl_shm = struct {
     ///     pool size, in bytes
     /// 
     /// 
-    pub fn create_pool(self: *const wl_shm, fd: wayland_types.Fd, size: i32) !struct { id: wl_shm_pool, } {
+    pub fn create_pool(self: *const wl_shm, fd: types.Fd, size: i32) !struct { id: wl_shm_pool, } {
         const id_id = self.runtime.getId();
         try self.runtime.sendRequest(self.object_id, 0, .{id_id, fd, size, });
         return .{.id = wl_shm_pool{.object_id = id_id, .runtime = self.runtime}, };
@@ -1159,7 +1159,7 @@ pub const wl_data_offer = struct {
     /// 
     /// 
     pub fn accept(self: *const wl_data_offer, serial: u32, mime_type: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 0, .{serial, wayland_types.String{.static = mime_type}, });
+        try self.runtime.sendRequest(self.object_id, 0, .{serial, types.String{.static = mime_type}, });
     }
 
     /// # receive
@@ -1209,8 +1209,8 @@ pub const wl_data_offer = struct {
     ///     file descriptor for data transfer
     /// 
     /// 
-    pub fn receive(self: *const wl_data_offer, mime_type: []const u8, fd: wayland_types.Fd) !void {
-        try self.runtime.sendRequest(self.object_id, 1, .{wayland_types.String{.static = mime_type}, fd, });
+    pub fn receive(self: *const wl_data_offer, mime_type: []const u8, fd: types.Fd) !void {
+        try self.runtime.sendRequest(self.object_id, 1, .{types.String{.static = mime_type}, fd, });
     }
 
     /// # destroy
@@ -1359,7 +1359,7 @@ pub const wl_data_offer = struct {
     ///     offered mime type
     /// 
     /// 
-    pub fn next_offer(self: *const wl_data_offer) !?struct {mime_type: wayland_types.String, } {
+    pub fn next_offer(self: *const wl_data_offer) !?struct {mime_type: types.String, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_offer)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -1516,7 +1516,7 @@ pub const wl_data_source = struct {
     /// 
     /// 
     pub fn offer(self: *const wl_data_source, mime_type: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 0, .{wayland_types.String{.static = mime_type}, });
+        try self.runtime.sendRequest(self.object_id, 0, .{types.String{.static = mime_type}, });
     }
 
     /// # destroy
@@ -1609,7 +1609,7 @@ pub const wl_data_source = struct {
     ///     true
     /// 
     /// 
-    pub fn next_target(self: *const wl_data_source) !?struct {mime_type: wayland_types.String, } {
+    pub fn next_target(self: *const wl_data_source) !?struct {mime_type: types.String, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_target)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -1648,7 +1648,7 @@ pub const wl_data_source = struct {
     ///     file descriptor for the data
     /// 
     /// 
-    pub fn next_send(self: *const wl_data_source) !?struct {mime_type: wayland_types.String, fd: wayland_types.Fd, } {
+    pub fn next_send(self: *const wl_data_source) !?struct {mime_type: types.String, fd: types.Fd, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_send)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -1920,7 +1920,7 @@ pub const wl_data_device = struct {
     ///     serial number of the implicit grab on the origin
     /// 
     /// 
-    pub fn start_drag(self: *const wl_data_device, source: wayland_types.ObjectId, origin: wayland_types.ObjectId, icon: wayland_types.ObjectId, serial: u32) !void {
+    pub fn start_drag(self: *const wl_data_device, source: types.ObjectId, origin: types.ObjectId, icon: types.ObjectId, serial: u32) !void {
         try self.runtime.sendRequest(self.object_id, 0, .{source, origin, icon, serial, });
     }
 
@@ -1972,7 +1972,7 @@ pub const wl_data_device = struct {
     ///     serial number of the event that triggered this request
     /// 
     /// 
-    pub fn set_selection(self: *const wl_data_device, source: wayland_types.ObjectId, serial: u32) !void {
+    pub fn set_selection(self: *const wl_data_device, source: types.ObjectId, serial: u32) !void {
         try self.runtime.sendRequest(self.object_id, 1, .{source, serial, });
     }
 
@@ -2026,7 +2026,7 @@ pub const wl_data_device = struct {
     ///     wl_data_offer
     /// 
     /// 
-    pub fn next_data_offer(self: *const wl_data_device) !?struct {id: wayland_types.ObjectId, } {
+    pub fn next_data_offer(self: *const wl_data_device) !?struct {id: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_data_offer)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -2108,7 +2108,7 @@ pub const wl_data_device = struct {
     ///     true
     /// 
     /// 
-    pub fn next_enter(self: *const wl_data_device) !?struct {serial: u32, surface: wayland_types.ObjectId, x: wayland_types.Fixed, y: wayland_types.Fixed, id: wayland_types.ObjectId, } {
+    pub fn next_enter(self: *const wl_data_device) !?struct {serial: u32, surface: types.ObjectId, x: types.Fixed, y: types.Fixed, id: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_enter)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -2177,7 +2177,7 @@ pub const wl_data_device = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn next_motion(self: *const wl_data_device) !?struct {time: u32, x: wayland_types.Fixed, y: wayland_types.Fixed, } {
+    pub fn next_motion(self: *const wl_data_device) !?struct {time: u32, x: types.Fixed, y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_motion)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -2252,7 +2252,7 @@ pub const wl_data_device = struct {
     ///     true
     /// 
     /// 
-    pub fn next_selection(self: *const wl_data_device) !?struct {id: wayland_types.ObjectId, } {
+    pub fn next_selection(self: *const wl_data_device) !?struct {id: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 5, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_selection)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 };
@@ -2398,7 +2398,7 @@ pub const wl_data_device_manager = struct {
     ///     wl_seat
     /// 
     /// 
-    pub fn get_data_device(self: *const wl_data_device_manager, seat: wayland_types.ObjectId) !struct { id: wl_data_device, } {
+    pub fn get_data_device(self: *const wl_data_device_manager, seat: types.ObjectId) !struct { id: wl_data_device, } {
         const id_id = self.runtime.getId();
         try self.runtime.sendRequest(self.object_id, 1, .{id_id, seat, });
         return .{.id = wl_data_device{.object_id = id_id, .runtime = self.runtime}, };
@@ -2481,7 +2481,7 @@ pub const wl_shell = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn get_shell_surface(self: *const wl_shell, surface: wayland_types.ObjectId) !struct { id: wl_shell_surface, } {
+    pub fn get_shell_surface(self: *const wl_shell, surface: types.ObjectId) !struct { id: wl_shell_surface, } {
         const id_id = self.runtime.getId();
         try self.runtime.sendRequest(self.object_id, 0, .{id_id, surface, });
         return .{.id = wl_shell_surface{.object_id = id_id, .runtime = self.runtime}, };
@@ -2645,7 +2645,7 @@ pub const wl_shell_surface = struct {
     ///     serial number of the implicit grab on the pointer
     /// 
     /// 
-    pub fn move(self: *const wl_shell_surface, seat: wayland_types.ObjectId, serial: u32) !void {
+    pub fn move(self: *const wl_shell_surface, seat: types.ObjectId, serial: u32) !void {
         try self.runtime.sendRequest(self.object_id, 1, .{seat, serial, });
     }
 
@@ -2704,7 +2704,7 @@ pub const wl_shell_surface = struct {
     ///     resize
     /// 
     /// 
-    pub fn resize(self: *const wl_shell_surface, seat: wayland_types.ObjectId, serial: u32, edges: u32) !void {
+    pub fn resize(self: *const wl_shell_surface, seat: types.ObjectId, serial: u32, edges: u32) !void {
         try self.runtime.sendRequest(self.object_id, 2, .{seat, serial, edges, });
     }
 
@@ -2794,7 +2794,7 @@ pub const wl_shell_surface = struct {
     ///     transient
     /// 
     /// 
-    pub fn set_transient(self: *const wl_shell_surface, parent: wayland_types.ObjectId, x: i32, y: i32, flags: u32) !void {
+    pub fn set_transient(self: *const wl_shell_surface, parent: types.ObjectId, x: i32, y: i32, flags: u32) !void {
         try self.runtime.sendRequest(self.object_id, 4, .{parent, x, y, flags, });
     }
 
@@ -2885,7 +2885,7 @@ pub const wl_shell_surface = struct {
     ///     true
     /// 
     /// 
-    pub fn set_fullscreen(self: *const wl_shell_surface, method: u32, framerate: u32, output: wayland_types.ObjectId) !void {
+    pub fn set_fullscreen(self: *const wl_shell_surface, method: u32, framerate: u32, output: types.ObjectId) !void {
         try self.runtime.sendRequest(self.object_id, 5, .{method, framerate, output, });
     }
 
@@ -2992,7 +2992,7 @@ pub const wl_shell_surface = struct {
     ///     transient
     /// 
     /// 
-    pub fn set_popup(self: *const wl_shell_surface, seat: wayland_types.ObjectId, serial: u32, parent: wayland_types.ObjectId, x: i32, y: i32, flags: u32) !void {
+    pub fn set_popup(self: *const wl_shell_surface, seat: types.ObjectId, serial: u32, parent: types.ObjectId, x: i32, y: i32, flags: u32) !void {
         try self.runtime.sendRequest(self.object_id, 6, .{seat, serial, parent, x, y, flags, });
     }
 
@@ -3044,7 +3044,7 @@ pub const wl_shell_surface = struct {
     ///     true
     /// 
     /// 
-    pub fn set_maximized(self: *const wl_shell_surface, output: wayland_types.ObjectId) !void {
+    pub fn set_maximized(self: *const wl_shell_surface, output: types.ObjectId) !void {
         try self.runtime.sendRequest(self.object_id, 7, .{output, });
     }
 
@@ -3078,7 +3078,7 @@ pub const wl_shell_surface = struct {
     /// 
     /// 
     pub fn set_title(self: *const wl_shell_surface, title: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 8, .{wayland_types.String{.static = title}, });
+        try self.runtime.sendRequest(self.object_id, 8, .{types.String{.static = title}, });
     }
 
     /// # set_class
@@ -3110,7 +3110,7 @@ pub const wl_shell_surface = struct {
     /// 
     /// 
     pub fn set_class(self: *const wl_shell_surface, class_: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 9, .{wayland_types.String{.static = class_}, });
+        try self.runtime.sendRequest(self.object_id, 9, .{types.String{.static = class_}, });
     }
 
     /// # ping
@@ -3437,7 +3437,7 @@ pub const wl_surface = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn attach(self: *const wl_surface, buffer: wayland_types.ObjectId, x: i32, y: i32) !void {
+    pub fn attach(self: *const wl_surface, buffer: types.ObjectId, x: i32, y: i32) !void {
         try self.runtime.sendRequest(self.object_id, 1, .{buffer, x, y, });
     }
 
@@ -3636,7 +3636,7 @@ pub const wl_surface = struct {
     ///     true
     /// 
     /// 
-    pub fn set_opaque_region(self: *const wl_surface, region: wayland_types.ObjectId) !void {
+    pub fn set_opaque_region(self: *const wl_surface, region: types.ObjectId) !void {
         try self.runtime.sendRequest(self.object_id, 4, .{region, });
     }
 
@@ -3692,7 +3692,7 @@ pub const wl_surface = struct {
     ///     true
     /// 
     /// 
-    pub fn set_input_region(self: *const wl_surface, region: wayland_types.ObjectId) !void {
+    pub fn set_input_region(self: *const wl_surface, region: types.ObjectId) !void {
         try self.runtime.sendRequest(self.object_id, 5, .{region, });
     }
 
@@ -4008,7 +4008,7 @@ pub const wl_surface = struct {
     ///     wl_output
     /// 
     /// 
-    pub fn next_enter(self: *const wl_surface) !?struct {output: wayland_types.ObjectId, } {
+    pub fn next_enter(self: *const wl_surface) !?struct {output: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_enter)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -4047,7 +4047,7 @@ pub const wl_surface = struct {
     ///     wl_output
     /// 
     /// 
-    pub fn next_leave(self: *const wl_surface) !?struct {output: wayland_types.ObjectId, } {
+    pub fn next_leave(self: *const wl_surface) !?struct {output: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_leave)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -4412,7 +4412,7 @@ pub const wl_seat = struct {
     ///     seat identifier
     /// 
     /// 
-    pub fn next_name(self: *const wl_seat) !?struct {name: wayland_types.String, } {
+    pub fn next_name(self: *const wl_seat) !?struct {name: types.String, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_name)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 };
@@ -4619,7 +4619,7 @@ pub const wl_pointer = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn set_cursor(self: *const wl_pointer, serial: u32, surface: wayland_types.ObjectId, hotspot_x: i32, hotspot_y: i32) !void {
+    pub fn set_cursor(self: *const wl_pointer, serial: u32, surface: types.ObjectId, hotspot_x: i32, hotspot_y: i32) !void {
         try self.runtime.sendRequest(self.object_id, 0, .{serial, surface, hotspot_x, hotspot_y, });
     }
 
@@ -4706,7 +4706,7 @@ pub const wl_pointer = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn next_enter(self: *const wl_pointer) !?struct {serial: u32, surface: wayland_types.ObjectId, surface_x: wayland_types.Fixed, surface_y: wayland_types.Fixed, } {
+    pub fn next_enter(self: *const wl_pointer) !?struct {serial: u32, surface: types.ObjectId, surface_x: types.Fixed, surface_y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_enter)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -4751,7 +4751,7 @@ pub const wl_pointer = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn next_leave(self: *const wl_pointer) !?struct {serial: u32, surface: wayland_types.ObjectId, } {
+    pub fn next_leave(self: *const wl_pointer) !?struct {serial: u32, surface: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_leave)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -4800,7 +4800,7 @@ pub const wl_pointer = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn next_motion(self: *const wl_pointer) !?struct {time: u32, surface_x: wayland_types.Fixed, surface_y: wayland_types.Fixed, } {
+    pub fn next_motion(self: *const wl_pointer) !?struct {time: u32, surface_x: types.Fixed, surface_y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_motion)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -4940,7 +4940,7 @@ pub const wl_pointer = struct {
     ///     length of vector in surface-local coordinate space
     /// 
     /// 
-    pub fn next_axis(self: *const wl_pointer) !?struct {time: u32, axis: u32, value: wayland_types.Fixed, } {
+    pub fn next_axis(self: *const wl_pointer) !?struct {time: u32, axis: u32, value: types.Fixed, } {
         return try self.runtime.next(self.object_id, 4, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_axis)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -5437,7 +5437,7 @@ pub const wl_keyboard = struct {
     ///     keymap size, in bytes
     /// 
     /// 
-    pub fn next_keymap(self: *const wl_keyboard) !?struct {format: u32, fd: wayland_types.Fd, size: u32, } {
+    pub fn next_keymap(self: *const wl_keyboard) !?struct {format: u32, fd: types.Fd, size: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_keymap)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -5497,7 +5497,7 @@ pub const wl_keyboard = struct {
     ///     the keys currently logically down
     /// 
     /// 
-    pub fn next_enter(self: *const wl_keyboard) !?struct {serial: u32, surface: wayland_types.ObjectId, keys: std.ArrayList(u8), } {
+    pub fn next_enter(self: *const wl_keyboard) !?struct {serial: u32, surface: types.ObjectId, keys: std.ArrayList(u8), } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_enter)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -5547,7 +5547,7 @@ pub const wl_keyboard = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn next_leave(self: *const wl_keyboard) !?struct {serial: u32, surface: wayland_types.ObjectId, } {
+    pub fn next_leave(self: *const wl_keyboard) !?struct {serial: u32, surface: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_leave)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -5873,7 +5873,7 @@ pub const wl_touch = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn next_down(self: *const wl_touch) !?struct {serial: u32, time: u32, surface: wayland_types.ObjectId, id: i32, x: wayland_types.Fixed, y: wayland_types.Fixed, } {
+    pub fn next_down(self: *const wl_touch) !?struct {serial: u32, time: u32, surface: types.ObjectId, id: i32, x: types.Fixed, y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_down)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -5979,7 +5979,7 @@ pub const wl_touch = struct {
     ///     surface-local y coordinate
     /// 
     /// 
-    pub fn next_motion(self: *const wl_touch) !?struct {time: u32, id: i32, x: wayland_types.Fixed, y: wayland_types.Fixed, } {
+    pub fn next_motion(self: *const wl_touch) !?struct {time: u32, id: i32, x: types.Fixed, y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_motion)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -6098,7 +6098,7 @@ pub const wl_touch = struct {
     ///     length of the minor axis in surface-local coordinates
     /// 
     /// 
-    pub fn next_shape(self: *const wl_touch) !?struct {id: i32, major: wayland_types.Fixed, minor: wayland_types.Fixed, } {
+    pub fn next_shape(self: *const wl_touch) !?struct {id: i32, major: types.Fixed, minor: types.Fixed, } {
         return try self.runtime.next(self.object_id, 5, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_shape)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -6157,7 +6157,7 @@ pub const wl_touch = struct {
     ///     angle between major axis and positive surface y-axis in degrees
     /// 
     /// 
-    pub fn next_orientation(self: *const wl_touch) !?struct {id: i32, orientation: wayland_types.Fixed, } {
+    pub fn next_orientation(self: *const wl_touch) !?struct {id: i32, orientation: types.Fixed, } {
         return try self.runtime.next(self.object_id, 6, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_orientation)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 };
@@ -6390,7 +6390,7 @@ pub const wl_output = struct {
     ///     transform
     /// 
     /// 
-    pub fn next_geometry(self: *const wl_output) !?struct {x: i32, y: i32, physical_width: i32, physical_height: i32, subpixel: i32, make: wayland_types.String, model: wayland_types.String, transform: i32, } {
+    pub fn next_geometry(self: *const wl_output) !?struct {x: i32, y: i32, physical_width: i32, physical_height: i32, subpixel: i32, make: types.String, model: types.String, transform: i32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_geometry)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -6602,7 +6602,7 @@ pub const wl_output = struct {
     ///     output name
     /// 
     /// 
-    pub fn next_name(self: *const wl_output) !?struct {name: wayland_types.String, } {
+    pub fn next_name(self: *const wl_output) !?struct {name: types.String, } {
         return try self.runtime.next(self.object_id, 4, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_name)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 
@@ -6642,7 +6642,7 @@ pub const wl_output = struct {
     ///     output description
     /// 
     /// 
-    pub fn next_description(self: *const wl_output) !?struct {description: wayland_types.String, } {
+    pub fn next_description(self: *const wl_output) !?struct {description: types.String, } {
         return try self.runtime.next(self.object_id, 5, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_description)).@"fn".return_type.?).error_union.payload).optional.child);
 }
 };
@@ -6935,7 +6935,7 @@ pub const wl_subcompositor = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn get_subsurface(self: *const wl_subcompositor, surface: wayland_types.ObjectId, parent: wayland_types.ObjectId) !struct { id: wl_subsurface, } {
+    pub fn get_subsurface(self: *const wl_subcompositor, surface: types.ObjectId, parent: types.ObjectId) !struct { id: wl_subsurface, } {
         const id_id = self.runtime.getId();
         try self.runtime.sendRequest(self.object_id, 1, .{id_id, surface, parent, });
         return .{.id = wl_subsurface{.object_id = id_id, .runtime = self.runtime}, };
@@ -7125,7 +7125,7 @@ pub const wl_subsurface = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn place_above(self: *const wl_subsurface, sibling: wayland_types.ObjectId) !void {
+    pub fn place_above(self: *const wl_subsurface, sibling: types.ObjectId) !void {
         try self.runtime.sendRequest(self.object_id, 2, .{sibling, });
     }
 
@@ -7157,7 +7157,7 @@ pub const wl_subsurface = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn place_below(self: *const wl_subsurface, sibling: wayland_types.ObjectId) !void {
+    pub fn place_below(self: *const wl_subsurface, sibling: types.ObjectId) !void {
         try self.runtime.sendRequest(self.object_id, 3, .{sibling, });
     }
 

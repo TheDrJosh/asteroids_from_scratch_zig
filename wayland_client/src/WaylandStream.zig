@@ -7,7 +7,7 @@ const native_endian = builtin.cpu.arch.endian();
 const Message = @import("Message.zig");
 
 pub const WaylandStream = @This();
-const wayland_types = @import("wayland_types.zig");
+const types = @import("types.zig");
 
 socket: std.posix.socket_t,
 allocator: std.mem.Allocator,
@@ -50,7 +50,7 @@ const Header = packed struct(u32) {
 };
 
 pub fn next(self: *const WaylandStream) !?Message {
-    const info_len = @sizeOf(wayland_types.ObjectId) + @sizeOf(Header);
+    const info_len = @sizeOf(types.ObjectId) + @sizeOf(Header);
 
     var header_buf = [1]u8{0} ** info_len;
     var fds_buf = [1]std.os.linux.fd_t{0} ** MAX_FD_RECV;
@@ -61,7 +61,7 @@ pub fn next(self: *const WaylandStream) !?Message {
         return error.ioctl;
     }
 
-    if (bytes_available < @sizeOf(wayland_types.ObjectId)) {
+    if (bytes_available < @sizeOf(types.ObjectId)) {
         return null;
     }
 
@@ -69,8 +69,8 @@ pub fn next(self: *const WaylandStream) !?Message {
 
     std.debug.assert(header_len.data_received == info_len);
 
-    const id = std.mem.readInt(wayland_types.ObjectId, header_buf[0..@sizeOf(wayland_types.ObjectId)], native_endian);
-    const header: Header = @bitCast(std.mem.readInt(u32, header_buf[@sizeOf(wayland_types.ObjectId)..], native_endian));
+    const id = std.mem.readInt(types.ObjectId, header_buf[0..@sizeOf(types.ObjectId)], native_endian);
+    const header: Header = @bitCast(std.mem.readInt(u32, header_buf[@sizeOf(types.ObjectId)..], native_endian));
 
     // std.debug.print("id: {}, opcode: {}, len: {}\n", .{ id, header.opcode, header.size });
 
@@ -99,8 +99,8 @@ pub fn next(self: *const WaylandStream) !?Message {
 }
 
 pub fn send(self: *const WaylandStream, message: Message) !void {
-    var object_id_bytes = [_]u8{0} ** @sizeOf(wayland_types.ObjectId);
-    std.mem.writeInt(wayland_types.ObjectId, &object_id_bytes, message.info.object, native_endian);
+    var object_id_bytes = [_]u8{0} ** @sizeOf(types.ObjectId);
+    std.mem.writeInt(types.ObjectId, &object_id_bytes, message.info.object, native_endian);
     var header_bytes = [_]u8{0} ** @sizeOf(Header);
     std.mem.writeInt(u32, &header_bytes, @bitCast(Header{
         .opcode = message.info.opcode,

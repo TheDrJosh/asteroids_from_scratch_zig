@@ -1,6 +1,6 @@
 const std = @import("std");
 const WaylandRuntime = @import("../WaylandRuntime.zig");
-const wayland_types = @import("../wayland_types.zig");
+const types = @import("../types.zig");
 
 /// # xdg_wm_base
 /// 
@@ -132,7 +132,7 @@ pub const xdg_wm_base = struct {
     ///     wl_surface
     /// 
     /// 
-    pub fn get_xdg_surface(self: *const xdg_wm_base, surface: wayland_types.ObjectId) !struct { id: xdg_surface, } {
+    pub fn get_xdg_surface(self: *const xdg_wm_base, surface: types.ObjectId) !struct { id: xdg_surface, } {
         const id_id = self.runtime.getId();
         try self.runtime.sendRequest(self.object_id, 2, .{id_id, surface, });
         return .{.id = xdg_surface{.object_id = id_id, .runtime = self.runtime}, };
@@ -976,7 +976,7 @@ pub const xdg_surface = struct {
     ///     xdg_positioner
     /// 
     /// 
-    pub fn get_popup(self: *const xdg_surface, parent: wayland_types.ObjectId, positioner: wayland_types.ObjectId) !struct { id: xdg_popup, } {
+    pub fn get_popup(self: *const xdg_surface, parent: types.ObjectId, positioner: types.ObjectId) !struct { id: xdg_popup, } {
         const id_id = self.runtime.getId();
         try self.runtime.sendRequest(self.object_id, 2, .{id_id, parent, positioner, });
         return .{.id = xdg_popup{.object_id = id_id, .runtime = self.runtime}, };
@@ -1504,7 +1504,7 @@ pub const xdg_toplevel = struct {
     ///     true
     /// 
     /// 
-    pub fn set_parent(self: *const xdg_toplevel, parent: wayland_types.ObjectId) !void {
+    pub fn set_parent(self: *const xdg_toplevel, parent: types.ObjectId) !void {
         try self.runtime.sendRequest(self.object_id, 1, .{parent, });
     }
 
@@ -1534,7 +1534,7 @@ pub const xdg_toplevel = struct {
     /// 
     /// 
     pub fn set_title(self: *const xdg_toplevel, title: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 2, .{wayland_types.String{.static = title}, });
+        try self.runtime.sendRequest(self.object_id, 2, .{types.String{.static = title}, });
     }
 
     /// # set_app_id
@@ -1579,7 +1579,7 @@ pub const xdg_toplevel = struct {
     /// 
     /// 
     pub fn set_app_id(self: *const xdg_toplevel, app_id: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 3, .{wayland_types.String{.static = app_id}, });
+        try self.runtime.sendRequest(self.object_id, 3, .{types.String{.static = app_id}, });
     }
 
     /// # show_window_menu
@@ -1650,7 +1650,7 @@ pub const xdg_toplevel = struct {
     ///     the y position to pop up the window menu at
     /// 
     /// 
-    pub fn show_window_menu(self: *const xdg_toplevel, seat: wayland_types.ObjectId, serial: u32, x: i32, y: i32) !void {
+    pub fn show_window_menu(self: *const xdg_toplevel, seat: types.ObjectId, serial: u32, x: i32, y: i32) !void {
         try self.runtime.sendRequest(self.object_id, 4, .{seat, serial, x, y, });
     }
 
@@ -1706,7 +1706,7 @@ pub const xdg_toplevel = struct {
     ///     the serial of the user event
     /// 
     /// 
-    pub fn move(self: *const xdg_toplevel, seat: wayland_types.ObjectId, serial: u32) !void {
+    pub fn move(self: *const xdg_toplevel, seat: types.ObjectId, serial: u32) !void {
         try self.runtime.sendRequest(self.object_id, 5, .{seat, serial, });
     }
 
@@ -1791,7 +1791,7 @@ pub const xdg_toplevel = struct {
     ///     resize_edge
     /// 
     /// 
-    pub fn resize(self: *const xdg_toplevel, seat: wayland_types.ObjectId, serial: u32, edges: u32) !void {
+    pub fn resize(self: *const xdg_toplevel, seat: types.ObjectId, serial: u32, edges: u32) !void {
         try self.runtime.sendRequest(self.object_id, 6, .{seat, serial, edges, });
     }
 
@@ -2038,7 +2038,7 @@ pub const xdg_toplevel = struct {
     ///     true
     /// 
     /// 
-    pub fn set_fullscreen(self: *const xdg_toplevel, output: wayland_types.ObjectId) !void {
+    pub fn set_fullscreen(self: *const xdg_toplevel, output: types.ObjectId) !void {
         try self.runtime.sendRequest(self.object_id, 11, .{output, });
     }
 
@@ -2406,7 +2406,7 @@ pub const xdg_popup = struct {
     ///     the serial of the user event
     /// 
     /// 
-    pub fn grab(self: *const xdg_popup, seat: wayland_types.ObjectId, serial: u32) !void {
+    pub fn grab(self: *const xdg_popup, seat: types.ObjectId, serial: u32) !void {
         try self.runtime.sendRequest(self.object_id, 1, .{seat, serial, });
     }
 
@@ -2465,7 +2465,7 @@ pub const xdg_popup = struct {
     ///     reposition request token
     /// 
     /// 
-    pub fn reposition(self: *const xdg_popup, positioner: wayland_types.ObjectId, token: u32) !void {
+    pub fn reposition(self: *const xdg_popup, positioner: types.ObjectId, token: u32) !void {
         try self.runtime.sendRequest(self.object_id, 2, .{positioner, token, });
     }
 

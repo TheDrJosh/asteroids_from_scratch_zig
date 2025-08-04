@@ -8,7 +8,7 @@ protocols = [
 
 
 def main():
-    protocols_zig = open("./src/wayland/protocols.zig", "w")
+    protocols_zig = open("./src/protocols.zig", "w")
 
     for protocol in protocols:
         tree = ET.parse(protocol)
@@ -34,18 +34,18 @@ def main():
 
         protocols_zig.write(
             makeDocComment(comment)
-            + "\nconst "
+            + "\npub const "
             + escapeKeyword(protocol_name)
-            + ' = @import("'
+            + ' = @import("protocols/'
             + protocol_name
             + '.zig");\n\n'
         )
 
-        zig_file = open("./src/wayland/protocols/" + protocol_name + ".zig", "w")
+        zig_file = open("./src/protocols/" + protocol_name + ".zig", "w")
 
         zig_file.write('const std = @import("std");\n')
         zig_file.write('const WaylandRuntime = @import("../WaylandRuntime.zig");\n')
-        zig_file.write('const wayland_types = @import("../wayland_types.zig");\n')
+        zig_file.write('const types = @import("../types.zig");\n')
 
         for interface_node in root.findall("./interface"):
             interface_name = interface_node.attrib["name"]
@@ -180,15 +180,15 @@ def main():
                     elif arg.attrib["type"] == "uint":
                         zig_file.write("u32")
                     elif arg.attrib["type"] == "object":
-                        zig_file.write("wayland_types.ObjectId")
+                        zig_file.write("types.ObjectId")
                     elif arg.attrib["type"] == "string":
                         zig_file.write("[]const u8")
                     elif arg.attrib["type"] == "array":
                         zig_file.write("[]const u8")
                     elif arg.attrib["type"] == "fixed":
-                        zig_file.write("wayland_types.Fixed")
+                        zig_file.write("types.Fixed")
                     elif arg.attrib["type"] == "fd":
-                        zig_file.write("wayland_types.Fd")
+                        zig_file.write("types.Fd")
                     else:
                         print("unsuported type. type = " + arg.attrib["type"])
 
@@ -221,14 +221,14 @@ def main():
                 for arg in request.findall("./arg"):
                     if arg.attrib["type"] == "string":
                         zig_file.write(
-                            "wayland_types.String{.static = "
+                            "types.String{.static = "
                             + arg.attrib["name"]
                             + "}, "
                         )
                     elif arg.attrib["type"] == "new_id":
                         if "interface" not in arg.attrib:
                             zig_file.write(
-                                "wayland_types.NewId{.interface = wayland_types.String{.static = "
+                                "types.NewId{.interface = types.String{.static = "
                                 + arg.attrib["name"]
                                 + ".interface}, .version = "
                                 + arg.attrib["name"]
@@ -329,16 +329,16 @@ def main():
                     elif arg.attrib["type"] == "array":
                         zig_file.write("std.ArrayList(u8), ")
                     elif arg.attrib["type"] == "string":
-                        zig_file.write("wayland_types.String, ")
+                        zig_file.write("types.String, ")
                     elif arg.attrib["type"] == "fixed":
-                        zig_file.write("wayland_types.Fixed, ")
+                        zig_file.write("types.Fixed, ")
                     elif arg.attrib["type"] == "object":
-                        zig_file.write("wayland_types.ObjectId, ")
+                        zig_file.write("types.ObjectId, ")
                     elif arg.attrib["type"] == "fd":
-                        zig_file.write("wayland_types.Fd, ")
+                        zig_file.write("types.Fd, ")
                     elif arg.attrib["type"] == "new_id":
                         # TODO - do propperly
-                        zig_file.write("wayland_types.ObjectId, ")
+                        zig_file.write("types.ObjectId, ")
                     else:
                         print("unsuported type. type = " + arg.attrib["type"])
 

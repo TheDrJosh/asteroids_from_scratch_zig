@@ -1,22 +1,22 @@
 const std = @import("std");
-const WaylandRuntime = @import("wayland/WaylandRuntime.zig");
-const wayland_types = @import("wayland/wayland_types.zig");
 
-const wayland_protocol = @import("wayland/protocols/wayland.zig");
-const xdg_shell_protocol = @import("wayland/protocols/xdg_shell.zig");
-const xdg_decoration_unstable_v1 = @import("wayland/protocols/xdg_decoration_unstable_v1.zig");
+const wayland_client = @import("wayland_client");
+const WaylandRuntime = wayland_client.WaylandRuntime;
+const types = wayland_client.types;
+
+const protocols = wayland_client.protocols;
 
 const GlobalManager = struct {
-    registry: wayland_protocol.wl_registry,
+    registry: protocols.wayland.wl_registry,
     globals: std.ArrayList(GlobalInfo),
 
     const GlobalInfo = struct {
         name: u32,
-        interface: wayland_types.String,
+        interface: types.String,
         version: u32,
     };
 
-    pub fn init(registry: wayland_protocol.wl_registry, allocator: std.mem.Allocator) GlobalManager {
+    pub fn init(registry: protocols.wayland.wl_registry, allocator: std.mem.Allocator) GlobalManager {
         return .{
             .registry = registry,
             .globals = std.ArrayList(GlobalInfo).init(allocator),
@@ -109,7 +109,7 @@ fn allocateShmFile(size: usize) !std.posix.fd_t {
 const width = 800;
 const height = 600;
 
-fn drawFrame(wl_shm: wayland_protocol.wl_shm) !wayland_protocol.wl_buffer {
+fn drawFrame(wl_shm: protocols.wayland.wl_shm) !protocols.wayland.wl_buffer {
     const stride = width * 4;
     const size = height * stride;
 
@@ -117,10 +117,10 @@ fn drawFrame(wl_shm: wayland_protocol.wl_shm) !wayland_protocol.wl_buffer {
     defer std.posix.close(fd);
     const data = try std.posix.mmap(null, size, std.posix.PROT.READ | std.posix.PROT.WRITE, std.posix.MAP{ .TYPE = .SHARED }, fd, 0);
     defer std.posix.munmap(data);
-    const pool = (try wl_shm.create_pool(wayland_types.Fd{ .fd = fd }, size)).id;
+    const pool = (try wl_shm.create_pool(types.Fd{ .fd = fd }, size)).id;
     defer pool.destroy() catch unreachable;
 
-    const buffer = (try pool.create_buffer(0, width, height, stride, @intFromEnum(wayland_protocol.wl_shm.enums.format.xrgb8888))).id;
+    const buffer = (try pool.create_buffer(0, width, height, stride, @intFromEnum(protocols.wayland.wl_shm.enums.format.xrgb8888))).id;
 
     const pixels = std.mem.bytesAsSlice(u32, data);
 
@@ -156,17 +156,13 @@ pub fn main() !void {
     var global_manager = GlobalManager.init(registry, allocator);
     defer global_manager.deinit();
 
-    const compositor = try global_manager.bind(wayland_protocol.wl_compositor) orelse unreachable;
+    const compositor = try global_manager.bind(protocols.wayland.wl_compositor) orelse unreachable;
 
     const surface = (try compositor.create_surface()).id;
 
-    const wl_shm = try global_manager.bind(wayland_protocol.wl_shm) orelse unreachable;
+    const wl_shm = try global_manager.bind(protocols.wayland.wl_shm) orelse unreachable;
 
-    // try surface.attach(buffer.object_id, 0, 0);
-    // try surface.damage(0, 0, std.math.maxInt(i32), std.math.maxInt(i32));
-    // try surface.commit();
-
-    const wm_base = try global_manager.bind(xdg_shell_protocol.xdg_wm_base) orelse unreachable;
+    const wm_base = try global_manager.bind(protocols.xdg_shell.xdg_wm_base) orelse unreachable;
 
     const xdg_surface = (try wm_base.get_xdg_surface(surface.object_id)).id;
 
@@ -175,12 +171,12 @@ pub fn main() !void {
     try toplevel_surface.set_title("test");
     try surface.commit();
 
-    const decoration_manager = try global_manager.bind(xdg_decoration_unstable_v1.zxdg_decoration_manager_v1) orelse unreachable;
+    const decoration_manager = try global_manager.bind(protocols.xdg_decoration_unstable_v1.zxdg_decoration_manager_v1) orelse unreachable;
     defer decoration_manager.destroy() catch unreachable;
 
     const decoration = (try decoration_manager.get_toplevel_decoration(toplevel_surface.object_id)).id;
 
-    try decoration.set_mode(@intFromEnum(xdg_decoration_unstable_v1.zxdg_toplevel_decoration_v1.enums.mode.server_side));
+    try decoration.set_mode(@intFromEnum(protocols.xdg_decoration_unstable_v1.zxdg_toplevel_decoration_v1.enums.mode.server_side));
 
     while (true) {
         if (try xdg_surface.next_configure()) |conf| {

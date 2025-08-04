@@ -15,20 +15,13 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const unix_domain_socket_lib_mod = b.createModule(.{
+    const wayland_client_dep = b.dependency("wayland_client", .{
         .target = target,
         .optimize = optimize,
     });
 
-    unix_domain_socket_lib_mod.link_libc = true;
-    unix_domain_socket_lib_mod.addCSourceFile(.{
-        .file = b.path("unix_domain_socket_lib/unix_domain_socket_lib.c"),
-    });
 
-    const unix_domain_socket_lib = b.addLibrary(.{
-        .name = "unix_domain_socket_lib",
-        .root_module = unix_domain_socket_lib_mod,
-    });
+    const wayland_client = wayland_client_dep.module("wayland_client");
 
     // We will also create a module for our other entry point, 'main.zig'.
     const exe_mod = b.createModule(.{
@@ -41,8 +34,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    exe_mod.linkLibrary(unix_domain_socket_lib);
-    exe_mod.addIncludePath(b.path("unix_domain_socket_lib/"));
+    exe_mod.addImport("wayland_client", wayland_client);
 
     // This creates another `std.Build.Step.Compile`, but this one builds an executable
     // rather than a static library.
@@ -50,8 +42,6 @@ pub fn build(b: *std.Build) void {
         .name = "asteroids_from_scratch",
         .root_module = exe_mod,
     });
-
-    exe.linkLibC();
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
