@@ -33,9 +33,19 @@ pub fn connectUnixSocket(sockfd: std.posix.socket_t, path: []const u8) !void {
 }
 
 pub fn sendFdsWithData(socket_fd: std.posix.socket_t, fds_to_send: []const std.posix.fd_t, data: []const u8) !void {
+    if (data.len == 0) {
+        if (fds_to_send.len != 0) {
+            std.debug.panic("unable to send fds without data", .{});
+        }
+        return;
+    }
+
     switch (c.send_fds_with_data(socket_fd, @constCast(fds_to_send.ptr), fds_to_send.len, @constCast(data.ptr), data.len)) {
         0 => {},
-        -1 => return error.sendmsg,
+        -1 => {
+            std.debug.print("err: {}\n", .{@as(std.c.E, @enumFromInt(std.c._errno().*))});
+            return error.sendmsg;
+        },
         else => unreachable,
     }
 }
@@ -45,9 +55,20 @@ pub fn recvFdsWithData(
     received_fds: []std.posix.fd_t,
     data_buf: []u8,
 ) !struct { fds_received: usize, data_received: usize } {
+    if (data_buf.len == 0) {
+        return .{
+            .fds_received = 0,
+            .data_received = 0,
+        };
+    }
+
     var data_received: usize = 0;
     switch (c.recv_fds_with_data(socket_fd, received_fds.ptr, received_fds.len, data_buf.ptr, data_buf.len, &data_received)) {
-        -1 => return error.recvmsg,
+        -1 => {
+            std.debug.print("err: {}\n", .{@as(std.c.E, @enumFromInt(std.c._errno().*))});
+
+            return error.recvmsg;
+        },
         -2 => return error.received_more_fds_than_expected,
         std.math.minInt(c_int)...-3 => unreachable,
         else => |fds_received| {

@@ -3,7 +3,7 @@ const std = @import("std");
 pub const ObjectId = u32;
 
 pub const NewId = struct {
-    interface: []const u8,
+    interface: String,
     version: u32,
     id: u32,
 };
@@ -25,8 +25,23 @@ pub const Fixed = packed struct(u32) {
     }
 };
 
-pub const String = struct {
-    data: std.ArrayList(u8),
+pub const String = union(enum) {
+    dynamic: std.ArrayList(u8),
+    static: []const u8,
+
+    pub fn data(self: String) []const u8 {
+        return switch (self) {
+            .dynamic => |arr| arr.items,
+            .static => |arr| arr, 
+        };
+    }
+
+    pub fn deinit(self: String) void {
+        switch (self) {
+            .dynamic => |arr| arr.deinit(),
+            .static => {},
+        }
+    }
 };
 
 pub const Fd = struct {

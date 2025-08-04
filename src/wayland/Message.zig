@@ -48,7 +48,7 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
             },
             wayland_types.String => {
                 field.* = wayland_types.String{
-                    .data = try readArray(data_reader, true, self.allocator),
+                    .dynamic = try readArray(data_reader, true, self.allocator),
                 };
             },
             std.ArrayList(u8) => {

@@ -281,9 +281,9 @@ pub const wl_registry = struct {
     ///     bounded object
     /// 
     /// 
-    pub fn bind(self: *const wl_registry, name: u32, id: type) !struct { id: id, } {
+    pub fn bind(self: *const wl_registry, name: u32, id: type, id_version: ?u32) !struct { id: id, } {
         const id_id = self.runtime.getId();
-        try self.runtime.sendRequest(self.object_id, 0, .{name, wayland_types.NewId{.interface = id.interface, .version = id.version, .id = id_id, }, });
+        try self.runtime.sendRequest(self.object_id, 0, .{name, wayland_types.NewId{.interface = wayland_types.String{.static = id.interface}, .version = id_version orelse id.version, .id = id_id, }, });
         return .{.id = id{.object_id = id_id, .runtime = self.runtime}, };
     }
 
@@ -1159,7 +1159,7 @@ pub const wl_data_offer = struct {
     /// 
     /// 
     pub fn accept(self: *const wl_data_offer, serial: u32, mime_type: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 0, .{serial, wayland_types.String{.data = mime_type}, });
+        try self.runtime.sendRequest(self.object_id, 0, .{serial, wayland_types.String{.static = mime_type}, });
     }
 
     /// # receive
@@ -1210,7 +1210,7 @@ pub const wl_data_offer = struct {
     /// 
     /// 
     pub fn receive(self: *const wl_data_offer, mime_type: []const u8, fd: wayland_types.Fd) !void {
-        try self.runtime.sendRequest(self.object_id, 1, .{wayland_types.String{.data = mime_type}, fd, });
+        try self.runtime.sendRequest(self.object_id, 1, .{wayland_types.String{.static = mime_type}, fd, });
     }
 
     /// # destroy
@@ -1516,7 +1516,7 @@ pub const wl_data_source = struct {
     /// 
     /// 
     pub fn offer(self: *const wl_data_source, mime_type: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 0, .{wayland_types.String{.data = mime_type}, });
+        try self.runtime.sendRequest(self.object_id, 0, .{wayland_types.String{.static = mime_type}, });
     }
 
     /// # destroy
@@ -3078,7 +3078,7 @@ pub const wl_shell_surface = struct {
     /// 
     /// 
     pub fn set_title(self: *const wl_shell_surface, title: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 8, .{wayland_types.String{.data = title}, });
+        try self.runtime.sendRequest(self.object_id, 8, .{wayland_types.String{.static = title}, });
     }
 
     /// # set_class
@@ -3110,7 +3110,7 @@ pub const wl_shell_surface = struct {
     /// 
     /// 
     pub fn set_class(self: *const wl_shell_surface, class_: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 9, .{wayland_types.String{.data = class_}, });
+        try self.runtime.sendRequest(self.object_id, 9, .{wayland_types.String{.static = class_}, });
     }
 
     /// # ping

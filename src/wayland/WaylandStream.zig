@@ -72,6 +72,8 @@ pub fn next(self: *const WaylandStream) !?Message {
     const id = std.mem.readInt(wayland_types.ObjectId, header_buf[0..@sizeOf(wayland_types.ObjectId)], native_endian);
     const header: Header = @bitCast(std.mem.readInt(u32, header_buf[@sizeOf(wayland_types.ObjectId)..], native_endian));
 
+    // std.debug.print("id: {}, opcode: {}, len: {}\n", .{ id, header.opcode, header.size });
+
     const body_buf = try self.allocator.alloc(u8, @as(usize, @intCast(@as(i32, @intCast(header.size)) - info_len)));
     errdefer self.allocator.free(body_buf);
 

@@ -1534,7 +1534,7 @@ pub const xdg_toplevel = struct {
     /// 
     /// 
     pub fn set_title(self: *const xdg_toplevel, title: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 2, .{wayland_types.String{.data = title}, });
+        try self.runtime.sendRequest(self.object_id, 2, .{wayland_types.String{.static = title}, });
     }
 
     /// # set_app_id
@@ -1579,7 +1579,7 @@ pub const xdg_toplevel = struct {
     /// 
     /// 
     pub fn set_app_id(self: *const xdg_toplevel, app_id: []const u8) !void {
-        try self.runtime.sendRequest(self.object_id, 3, .{wayland_types.String{.data = app_id}, });
+        try self.runtime.sendRequest(self.object_id, 3, .{wayland_types.String{.static = app_id}, });
     }
 
     /// # show_window_menu

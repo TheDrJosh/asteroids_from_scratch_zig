@@ -1,7 +1,10 @@
 const std = @import("std");
 const WaylandRuntime = @import("wayland/WaylandRuntime.zig");
 const wayland_types = @import("wayland/wayland_types.zig");
+
 const wayland_protocol = @import("wayland/protocols/wayland.zig");
+const xdg_shell_protocol = @import("wayland/protocols/xdg_shell.zig");
+const xdg_decoration_unstable_v1 = @import("wayland/protocols/xdg_decoration_unstable_v1.zig");
 
 const GlobalManager = struct {
     registry: wayland_protocol.wl_registry,
@@ -9,7 +12,7 @@ const GlobalManager = struct {
 
     const GlobalInfo = struct {
         name: u32,
-        interface: std.ArrayList(u8),
+        interface: wayland_types.String,
         version: u32,
     };
 
@@ -32,9 +35,9 @@ const GlobalManager = struct {
             try self.globals.append(.{
                 .name = global.name,
                 .version = global.version,
-                .interface = global.interface.data,
+                .interface = global.interface,
             });
-            std.debug.print("Global(name: {}, interface: {s}, version: {})\n", .{ global.name, global.interface.data.items, global.version });
+            // std.debug.print("Global(name: {}, interface: {s}, version: {})\n", .{ global.name, global.interface.data(), global.version });
         }
 
         while (try self.registry.next_global_remove()) |global| {
@@ -46,16 +49,12 @@ const GlobalManager = struct {
             }
         }
 
-        const name = for (0..self.globals.items.len) |i| {
-            if (std.mem.eql(u8, self.globals.items[i].interface.items, T.interface)) {
-                if (self.globals.items[i].version < T.version) {
-                    std.debug.print("Warnning global {s} version is less than expected. got version {} expected {}\n", .{ self.globals.items[i].interface.items, self.globals.items[i].version, T.version });
-                }
-                break self.globals.items[i].name;
+        for (0..self.globals.items.len) |i| {
+            if (std.mem.eql(u8, self.globals.items[i].interface.data(), T.interface)) {
+                return (try self.registry.bind(self.globals.items[i].name, T, self.globals.items[i].version)).id;
             }
-        } else return null;
-
-        return (try self.registry.bind(name, T)).id;
+        }
+        return null;
     }
 };
 
@@ -75,7 +74,7 @@ fn randname() ![6]u8 {
 
 fn createShmFile() !std.posix.fd_t {
     var retries: u8 = 100;
-    while (retries > 0 and std.c._errno().* == @intFromEnum(std.c.E.EXIST)) {
+    while (retries > 0 and (std.c._errno().* == @intFromEnum(std.c.E.EXIST) or retries == 100)) {
         var name = [1:0]u8{0} ** ("/wl_shm-XXXXXX".len);
         _ = try std.fmt.bufPrint(&name, "/wl_shm-{s}", .{try randname()});
         retries -= 1;
@@ -96,7 +95,7 @@ fn createShmFile() !std.posix.fd_t {
 fn allocateShmFile(size: usize) !std.posix.fd_t {
     const fd = try createShmFile();
 
-    var ret: c_int = 0;
+    var ret: c_int = std.c.ftruncate(fd, @intCast(size));
     while (ret < 0 and std.c._errno().* == @intFromEnum(std.c.E.INTR)) {
         ret = std.c.ftruncate(fd, @intCast(size));
     }
@@ -105,6 +104,37 @@ fn allocateShmFile(size: usize) !std.posix.fd_t {
         return error.failed;
     }
     return fd;
+}
+
+const width = 800;
+const height = 600;
+
+fn drawFrame(wl_shm: wayland_protocol.wl_shm) !wayland_protocol.wl_buffer {
+    const stride = width * 4;
+    const size = height * stride;
+
+    const fd = try allocateShmFile(size);
+    defer std.posix.close(fd);
+    const data = try std.posix.mmap(null, size, std.posix.PROT.READ | std.posix.PROT.WRITE, std.posix.MAP{ .TYPE = .SHARED }, fd, 0);
+    defer std.posix.munmap(data);
+    const pool = (try wl_shm.create_pool(wayland_types.Fd{ .fd = fd }, size)).id;
+    defer pool.destroy() catch unreachable;
+
+    const buffer = (try pool.create_buffer(0, width, height, stride, @intFromEnum(wayland_protocol.wl_shm.enums.format.xrgb8888))).id;
+
+    const pixels = std.mem.bytesAsSlice(u32, data);
+
+    for (0..height) |y| {
+        for (0..width) |x| {
+            if ((x + y / 8 * 8) % 16 < 8) {
+                pixels[y * width + x] = 0xFF00FF00;
+            } else {
+                pixels[y * width + x] = 0xFF0000FF;
+            }
+        }
+    }
+
+    return buffer;
 }
 
 pub fn main() !void {
@@ -119,7 +149,9 @@ pub fn main() !void {
 
     const registry = (try display.get_registry()).registry;
 
-    std.Thread.sleep(1_000_000_000);
+    const sync_callback = (try display.sync()).callback;
+
+    while (try sync_callback.next_done() == null) {}
 
     var global_manager = GlobalManager.init(registry, allocator);
     defer global_manager.deinit();
@@ -130,34 +162,43 @@ pub fn main() !void {
 
     const wl_shm = try global_manager.bind(wayland_protocol.wl_shm) orelse unreachable;
 
-    const width = 1920;
-    const height = 1080;
+    // try surface.attach(buffer.object_id, 0, 0);
+    // try surface.damage(0, 0, std.math.maxInt(i32), std.math.maxInt(i32));
+    // try surface.commit();
 
-    const stride = width * 4;
-    const shm_pool_size = height * stride * 2;
+    const wm_base = try global_manager.bind(xdg_shell_protocol.xdg_wm_base) orelse unreachable;
 
-    const fd = try allocateShmFile(shm_pool_size);
-    const pool_data = try std.posix.mmap(null, shm_pool_size, std.posix.PROT.READ | std.posix.PROT.WRITE, std.posix.MAP{ .TYPE = .SHARED }, fd, 0);
-    const pool = (try wl_shm.create_pool(wayland_types.Fd{.fd = fd}, shm_pool_size)).id;
+    const xdg_surface = (try wm_base.get_xdg_surface(surface.object_id)).id;
 
-    const index = 0;
-    const offset = height * stride * index;
-    const buffer = (try pool.create_buffer(offset, width, height, stride, @intFromEnum(wayland_protocol.wl_shm.enums.format.xrgb8888))).id;
+    const toplevel_surface = (try xdg_surface.get_toplevel()).id;
 
-    const pixels = std.mem.bytesAsSlice(u32, pool_data[offset..(height * stride)]);
-    for (0..height) |y| {
-        for (0..width) |x| {
-            if ((x + y / 8 * 8) % 16 < 8) {
-                pixels[y * width + x] = 0xFF666666;
-            } else {
-                pixels[y * width + x] = 0xFFEEEEEE;
-            }
+    try toplevel_surface.set_title("test");
+    try surface.commit();
+
+    const decoration_manager = try global_manager.bind(xdg_decoration_unstable_v1.zxdg_decoration_manager_v1) orelse unreachable;
+    defer decoration_manager.destroy() catch unreachable;
+
+    const decoration = (try decoration_manager.get_toplevel_decoration(toplevel_surface.object_id)).id;
+
+    try decoration.set_mode(@intFromEnum(xdg_decoration_unstable_v1.zxdg_toplevel_decoration_v1.enums.mode.server_side));
+
+    while (true) {
+        if (try xdg_surface.next_configure()) |conf| {
+            try xdg_surface.ack_configure(conf.serial);
+            const buffer = try drawFrame(wl_shm);
+
+            try surface.attach(buffer.object_id, 0, 0);
+            try surface.commit();
+        }
+
+        if (try wm_base.next_ping()) |ping| {
+            try wm_base.pong(ping.serial);
+        }
+
+        if (try toplevel_surface.next_close()) |_| {
+            break;
         }
     }
-
-    try surface.attach(buffer.object_id, 0, 0);
-    try surface.damage(0, 0, std.math.maxInt(i32), std.math.maxInt(i32));
-    try surface.commit();
 }
 
 test "callback sync" {

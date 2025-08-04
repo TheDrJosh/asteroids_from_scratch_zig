@@ -94,13 +94,13 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
                 try message_writer.writeInt(u32, @bitCast(field), native_endian);
             },
             wayland_types.NewId => {
-                try writeArray(message_writer, field.interface, true);
+                try writeArray(message_writer, field.interface.data(), true);
 
                 try message_writer.writeInt(u32, field.version, native_endian);
                 try message_writer.writeInt(u32, field.id, native_endian);
             },
             wayland_types.String => {
-                try writeArray(message_writer, field.data, true);
+                try writeArray(message_writer, field.data(), true);
             },
             []const u8, []u8 => {
                 try writeArray(message_writer, field, false);
@@ -159,9 +159,9 @@ pub fn next(self: *WaylandRuntime, object: wayland_types.ObjectId, opcode: u16, 
             switch (msg.info.opcode) {
                 0 => {
                     const parsed_msg = try msg.parse(struct { object_id: wayland_types.ObjectId, code: u32, message: wayland_types.String });
-                    defer parsed_msg.args.message.data.deinit();
+                    defer parsed_msg.args.message.deinit();
 
-                    std.debug.print("Wayland Error recived on object({}), code({}). {s}\n", .{ parsed_msg.args.object_id, parsed_msg.args.code, parsed_msg.args.message.data.items });
+                    std.debug.panic("Wayland Error recived on object({}), code({}). {s}\n", .{ parsed_msg.args.object_id, parsed_msg.args.code, parsed_msg.args.message.data() });
                 },
                 1 => {
                     const parsed_msg = try msg.parse(struct { id: u32 });
