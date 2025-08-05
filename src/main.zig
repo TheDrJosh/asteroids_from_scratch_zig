@@ -2,7 +2,7 @@ const std = @import("std");
 
 const wayland_client = @import("wayland_client");
 const WaylandRuntime = wayland_client.WaylandRuntime;
-const types = wayland_client.types;
+const wayland_types = wayland_client.types;
 
 const protocols = wayland_client.protocols;
 
@@ -12,7 +12,7 @@ const GlobalManager = struct {
 
     const GlobalInfo = struct {
         name: u32,
-        interface: types.String,
+        interface: wayland_types.String,
         version: u32,
     };
 
@@ -117,7 +117,7 @@ fn drawFrame(wl_shm: protocols.wayland.wl_shm) !protocols.wayland.wl_buffer {
     defer std.posix.close(fd);
     const data = try std.posix.mmap(null, size, std.posix.PROT.READ | std.posix.PROT.WRITE, std.posix.MAP{ .TYPE = .SHARED }, fd, 0);
     defer std.posix.munmap(data);
-    const pool = (try wl_shm.create_pool(types.Fd{ .fd = fd }, size)).id;
+    const pool = (try wl_shm.create_pool(wayland_types.Fd{ .fd = fd }, size)).id;
     defer pool.destroy() catch unreachable;
 
     const buffer = (try pool.create_buffer(0, width, height, stride, @intFromEnum(protocols.wayland.wl_shm.enums.format.xrgb8888))).id;
@@ -127,9 +127,9 @@ fn drawFrame(wl_shm: protocols.wayland.wl_shm) !protocols.wayland.wl_buffer {
     for (0..height) |y| {
         for (0..width) |x| {
             if ((x + y / 8 * 8) % 16 < 8) {
-                pixels[y * width + x] = 0xFF00FF00;
+                pixels[y * width + x] = 0xFFFFFFF;
             } else {
-                pixels[y * width + x] = 0xFF0000FF;
+                pixels[y * width + x] = 0xFF000000;
             }
         }
     }

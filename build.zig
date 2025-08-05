@@ -20,7 +20,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-
     const wayland_client = wayland_client_dep.module("wayland_client");
 
     // We will also create a module for our other entry point, 'main.zig'.

@@ -6,7 +6,6 @@ protocols = [
     "/usr/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml",
 ]
 
-
 def main():
     protocols_zig = open("./src/protocols.zig", "w")
 
