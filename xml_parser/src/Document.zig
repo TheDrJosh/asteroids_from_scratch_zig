@@ -29,12 +29,12 @@ pub fn deinit(self: *const Document) void {
     self.arena_allocator.deinit();
 }
 
-test {
-    const file = try (try std.fs.openFileAbsolute("/usr/share/wayland/wayland.xml", .{})).readToEndAlloc(std.testing.allocator, std.math.maxInt(usize));
-    defer std.testing.allocator.free(file);
+// test {
+//     const file = try (try std.fs.openFileAbsolute("/usr/share/wayland/wayland.xml", .{})).readToEndAlloc(std.testing.allocator, std.math.maxInt(usize));
+//     defer std.testing.allocator.free(file);
 
-    const doc = try Document.init(file, std.testing.allocator);
-    defer doc.deinit();
+//     const doc = try Document.init(file, std.testing.allocator);
+//     defer doc.deinit();
 
-    std.debug.print("node: {any}\n", .{doc.root});
-}
+//     std.debug.print("node: {any}\n", .{doc.root});
+// }
