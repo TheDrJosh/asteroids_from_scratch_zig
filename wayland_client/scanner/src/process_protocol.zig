@@ -13,7 +13,7 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
     try writer.writeAll("pub const ");
     try writer.writeAll(protocol.name.items);
     tab_writer.indent += 1;
-    try writer.writeAll(" = struct {\n");
+    try writer.writeAll(" = struct {");
 
     for (protocol.interfaces.items) |interface| {
         if (interface.description) |desc| {
@@ -26,9 +26,7 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
 
         try writer.writeAll("pub const interface = \"");
         try writer.writeAll(interface.name.items);
-        try writer.writeAll("\";\npub const version = ");
-        try writer.writeAll(interface.version.items);
-        try writer.writeAll(";\n");
+        try writer.print("\";\npub const version = {};\n", .{interface.version});
 
         try writer.writeAll("\nobject_id: types.ObjectId,\nruntime: *WaylandRuntime,\n");
 
@@ -38,24 +36,115 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
             }
             try writer.writeAll("pub const ");
 
-            var i: usize = 0;
+            try writeHumpCase(@"enum".name.items, writer);
 
-            while (i < @"enum".name.items.len) {
-                if (i == 0) {
-                    try writer.writeByte(std.ascii.toUpper(@"enum".name.items[i]));
-                    i += 1;
-                } else if (@"enum".name.items[i] == '_' and i != @"enum".name.items.len - 1) {
-                    try writer.writeByte(std.ascii.toUpper(@"enum".name.items[i + 1]));
-                    i += 2;
-                } else {
-                    try writer.writeByte(@"enum".name.items[i]);
-                    i += 1;
-                }
-            }
             tab_writer.indent += 1;
 
-            if (@"enum".bitfield.items) {
-                try writer.writeAll(" = struct(u32) {");
+            if (@"enum".bitfield) {
+                try writer.writeAll(" = packed struct(u32) {");
+
+                var bits = [1]?wayland.Entry{null} ** 32;
+
+                for (@"enum".entries.items) |entry| {
+                    if (entry.value > 0 and std.math.isPowerOfTwo(@as(u64, @intCast(entry.value)))) {
+                        bits[std.math.log2_int(u64, @intCast(entry.value))] = entry;
+                    }
+                }
+
+                var i: usize = 0;
+                var empty_count: ?usize = null;
+                for (bits) |bit| {
+                    if (bit) |b| {
+                        if (empty_count) |ec| {
+                            try writer.print("\n_{d}: u{d} = 0,", .{ i, ec });
+                            i += 1;
+                        }
+
+                        var comment = std.ArrayList(u8).init(allocator);
+                        defer comment.deinit();
+
+                        if (b.summary) |summary| {
+                            try comment.appendSlice("## summary\n\n");
+                            try comment.appendSlice(summary.items);
+
+                            try comment.appendSlice("\n\n");
+                        }
+
+                        if (b.since) |since| {
+                            try comment.appendSlice("## since\n\n");
+                            try comment.writer().print("{}", .{since});
+
+                            try comment.appendSlice("\n\n");
+                        }
+
+                        if (b.deprecated_since) |deprecated_since| {
+                            try comment.appendSlice("## deprecated since\n\n");
+                            try comment.writer().print("{}", .{deprecated_since});
+                        }
+
+                        try writeDocComment(writer, comment.items);
+
+                        try writer.print("{s}: bool = false,", .{b.name.items});
+                    } else {
+                        if (empty_count) |*ec| {
+                            ec.* += 1;
+                        } else {
+                            empty_count = 1;
+                        }
+                    }
+                }
+
+                for (@"enum".entries.items) |entry| {
+                    if (entry.value > 0 and std.math.isPowerOfTwo(@as(u64, @intCast(entry.value)))) {
+                        continue;
+                    }
+
+                    var comment = std.ArrayList(u8).init(allocator);
+                    defer comment.deinit();
+
+                    if (entry.summary) |summary| {
+                        try comment.appendSlice("## summary\n\n");
+                        try comment.appendSlice(summary.items);
+
+                        try comment.appendSlice("\n\n");
+                    }
+
+                    if (entry.since) |since| {
+                        try comment.appendSlice("## since\n\n");
+                        try comment.writer().print("{}", .{since});
+
+                        try comment.appendSlice("\n\n");
+                    }
+
+                    if (entry.deprecated_since) |deprecated_since| {
+                        try comment.appendSlice("## deprecated since\n\n");
+                        try comment.writer().print("{}", .{deprecated_since});
+                    }
+
+                    try writeDocComment(writer, comment.items);
+
+                    try writer.writeAll("pub const ");
+                    for (entry.name.items) |c| {
+                        try writer.writeByte(std.ascii.toUpper(c));
+                    }
+                    try writer.writeAll(" = ");
+
+                    try writeHumpCase(@"enum".name.items, writer);
+
+                    try writer.writeAll("{ ");
+
+                    const set_bits = std.bit_set.IntegerBitSet(32){
+                        .mask = @as(u32, @intCast(entry.value)),
+                    };
+
+                    for (0..32) |index| {
+                        if (set_bits.isSet(index)) {
+                            try writer.print(".{s} = true, ", .{bits[index].?.name.items});
+                        }
+                    }
+
+                    try writer.writeAll("};\n");
+                }
             } else {
                 try writer.writeAll(" = enum(u32) {");
 
@@ -72,21 +161,21 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
 
                     if (entry.since) |since| {
                         try comment.appendSlice("## since\n\n");
-                        try comment.appendSlice(since.items);
+                        try comment.writer().print("{}", .{since});
 
                         try comment.appendSlice("\n\n");
                     }
 
                     if (entry.deprecated_since) |deprecated_since| {
                         try comment.appendSlice("## deprecated since\n\n");
-                        try comment.appendSlice(deprecated_since.items);
+                        try comment.writer().print("{}", .{deprecated_since});
                     }
 
                     try writeDocComment(writer, comment.items);
 
                     try escapeIdentifier(writer, entry.name.items);
                     try writer.writeAll(" = ");
-                    try writer.writeAll(entry.value.items);
+                    try writer.print("{}", .{entry.value});
                     try writer.writeAll(",");
                 }
             }
@@ -95,6 +184,8 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
 
             try writer.writeAll("\n};\n");
         }
+
+        
 
         tab_writer.indent -= 1;
 
@@ -159,3 +250,19 @@ fn escapeIdentifier(writer: writers.TabWriter(std.fs.File.Writer).Writer, ident:
     }
 }
 
+pub fn writeHumpCase(text: []const u8, writer: writers.TabWriter(std.fs.File.Writer).Writer) !void {
+    var i: usize = 0;
+
+    while (i < text.len) {
+        if (i == 0) {
+            try writer.writeByte(std.ascii.toUpper(text[i]));
+            i += 1;
+        } else if (text[i] == '_' and i != text.len - 1) {
+            try writer.writeByte(std.ascii.toUpper(text[i + 1]));
+            i += 2;
+        } else {
+            try writer.writeByte(text[i]);
+            i += 1;
+        }
+    }
+}

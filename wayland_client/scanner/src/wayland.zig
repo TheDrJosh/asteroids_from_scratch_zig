@@ -52,7 +52,7 @@ pub const Protocol = struct {
 
 pub const Interface = struct {
     name: std.ArrayList(u8),
-    version: std.ArrayList(u8),
+    version: u32,
 
     description: ?Description,
     requests: std.ArrayList(Request),
@@ -64,9 +64,7 @@ pub const Interface = struct {
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
-        var version = std.ArrayList(u8).init(allocator);
-        errdefer version.deinit();
-        try version.appendSlice(node.getAttrib("version") orelse return error.no_version);
+        const version = if (node.getAttrib("version")) |str| try std.fmt.parseInt(u32, str, 0) else return error.no_version;
 
         const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
         errdefer if (description) |d| d.deinit();
@@ -107,7 +105,6 @@ pub const Interface = struct {
 
     pub fn deinit(self: *const Interface) void {
         self.name.deinit();
-        self.version.deinit();
 
         if (self.description) |str| {
             str.deinit();
@@ -133,8 +130,8 @@ pub const Interface = struct {
 pub const Request = struct {
     name: std.ArrayList(u8),
     type: ?std.ArrayList(u8),
-    since: ?std.ArrayList(u8),
-    deprecated_since: ?std.ArrayList(u8),
+    since: ?u32,
+    deprecated_since: ?u32,
 
     description: ?Description,
     args: std.ArrayList(Arg),
@@ -152,21 +149,9 @@ pub const Request = struct {
         } else null;
         errdefer if (_type) |s| s.deinit();
 
-        const since = if (node.getAttrib("since")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
-            errdefer string.deinit();
-            try string.appendSlice(str);
-            break :blk string;
-        } else null;
-        errdefer if (since) |s| s.deinit();
+        const since = if (node.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const deprecated_since = if (node.getAttrib("deprecated_since")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
-            errdefer string.deinit();
-            try string.appendSlice(str);
-            break :blk string;
-        } else null;
-        errdefer if (deprecated_since) |s| s.deinit();
+        const deprecated_since = if (node.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
         const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
         errdefer if (description) |d| d.deinit();
@@ -197,13 +182,6 @@ pub const Request = struct {
         if (self.type) |str| {
             str.deinit();
         }
-        if (self.since) |str| {
-            str.deinit();
-        }
-
-        if (self.deprecated_since) |str| {
-            str.deinit();
-        }
 
         for (self.args.items) |i| {
             i.deinit();
@@ -215,8 +193,8 @@ pub const Request = struct {
 pub const Event = struct {
     name: std.ArrayList(u8),
     type: ?std.ArrayList(u8),
-    since: ?std.ArrayList(u8),
-    deprecated_since: ?std.ArrayList(u8),
+    since: ?u32,
+    deprecated_since: ?u32,
 
     description: ?Description,
     args: std.ArrayList(Arg),
@@ -234,21 +212,9 @@ pub const Event = struct {
         } else null;
         errdefer if (_type) |s| s.deinit();
 
-        const since = if (node.getAttrib("since")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
-            errdefer string.deinit();
-            try string.appendSlice(str);
-            break :blk string;
-        } else null;
-        errdefer if (since) |s| s.deinit();
+        const since = if (node.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const deprecated_since = if (node.getAttrib("deprecated_since")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
-            errdefer string.deinit();
-            try string.appendSlice(str);
-            break :blk string;
-        } else null;
-        errdefer if (deprecated_since) |s| s.deinit();
+        const deprecated_since = if (node.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
         const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
         errdefer if (description) |d| d.deinit();
@@ -279,13 +245,6 @@ pub const Event = struct {
         if (self.type) |str| {
             str.deinit();
         }
-        if (self.since) |str| {
-            str.deinit();
-        }
-
-        if (self.deprecated_since) |str| {
-            str.deinit();
-        }
 
         for (self.args.items) |i| {
             i.deinit();
@@ -296,7 +255,7 @@ pub const Event = struct {
 
 pub const Enum = struct {
     name: std.ArrayList(u8),
-    since: ?std.ArrayList(u8),
+    since: ?u32,
     bitfield: bool,
 
     description: ?Description,
@@ -307,23 +266,9 @@ pub const Enum = struct {
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
-        const since = if (node.getAttrib("since")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
-            errdefer string.deinit();
-            try string.appendSlice(str);
-            break :blk string;
-        } else null;
-        errdefer if (since) |s| s.deinit();
+        const since = if (node.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const bitfield_str = if (node.getAttrib("bitfield")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
-            errdefer string.deinit();
-            try string.appendSlice(str);
-            break :blk string;
-        } else null;
-        defer if (bitfield_str) |s| s.deinit();
-
-        const bitfield = if (bitfield_str) |str| std.mem.eql(u8, str, "true") else false;
+        const bitfield = if (node.getAttrib("bitfield")) |str| std.mem.eql(u8, str, "true") else false;
 
         const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
         errdefer if (description) |d| d.deinit();
@@ -350,12 +295,6 @@ pub const Enum = struct {
         if (self.description) |str| {
             str.deinit();
         }
-        if (self.since) |str| {
-            str.deinit();
-        }
-        if (self.bitfield) |str| {
-            str.deinit();
-        }
 
         for (self.entries.items) |i| {
             i.deinit();
@@ -366,10 +305,10 @@ pub const Enum = struct {
 
 pub const Entry = struct {
     name: std.ArrayList(u8),
-    value: std.ArrayList(u8),
+    value: i64,
     summary: ?std.ArrayList(u8),
-    since: ?std.ArrayList(u8),
-    deprecated_since: ?std.ArrayList(u8),
+    since: ?u32,
+    deprecated_since: ?u32,
 
     description: ?Description,
 
@@ -378,9 +317,7 @@ pub const Entry = struct {
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
-        var value = std.ArrayList(u8).init(allocator);
-        errdefer value.deinit();
-        try value.appendSlice(node.getAttrib("value") orelse return error.no_value);
+        const value = if (node.getAttrib("value")) |str| try std.fmt.parseInt(i32, str, 0) else return error.no_value;
 
         const summary = if (node.getAttrib("summary")) |str| blk: {
             var string = std.ArrayList(u8).init(allocator);
@@ -390,21 +327,9 @@ pub const Entry = struct {
         } else null;
         errdefer if (summary) |s| s.deinit();
 
-        const since = if (node.getAttrib("since")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
-            errdefer string.deinit();
-            try string.appendSlice(str);
-            break :blk string;
-        } else null;
-        errdefer if (since) |s| s.deinit();
+        const since = if (node.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const deprecated_since = if (node.getAttrib("deprecated_since")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
-            errdefer string.deinit();
-            try string.appendSlice(str);
-            break :blk string;
-        } else null;
-        errdefer if (deprecated_since) |s| s.deinit();
+        const deprecated_since = if (node.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
         const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
         errdefer if (description) |d| d.deinit();
@@ -421,17 +346,9 @@ pub const Entry = struct {
 
     pub fn deinit(self: *const Entry) void {
         self.name.deinit();
-        self.value.deinit();
         if (self.summary) |str| {
             str.deinit();
         }
-        if (self.since) |str| {
-            str.deinit();
-        }
-        if (self.deprecated_since) |str| {
-            str.deinit();
-        }
-
         if (self.description) |str| {
             str.deinit();
         }
@@ -440,10 +357,10 @@ pub const Entry = struct {
 
 pub const Arg = struct {
     name: std.ArrayList(u8),
-    type: std.ArrayList(u8),
+    type: Type,
     summary: ?std.ArrayList(u8),
     interface: ?std.ArrayList(u8),
-    allow_null: ?std.ArrayList(u8),
+    allow_null: bool,
     @"enum": ?std.ArrayList(u8),
 
     description: ?Description,
@@ -453,9 +370,7 @@ pub const Arg = struct {
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
-        var @"type" = std.ArrayList(u8).init(allocator);
-        errdefer @"type".deinit();
-        try @"type".appendSlice(node.getAttrib("type") orelse return error.no_value);
+        const @"type" = try Type.parse(node.getAttrib("type") orelse return error.no_value);
 
         const summary = if (node.getAttrib("summary")) |str| blk: {
             var string = std.ArrayList(u8).init(allocator);
@@ -473,13 +388,7 @@ pub const Arg = struct {
         } else null;
         errdefer if (interface) |s| s.deinit();
 
-        const allow_null = if (node.getAttrib("allow_null")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
-            errdefer string.deinit();
-            try string.appendSlice(str);
-            break :blk string;
-        } else null;
-        errdefer if (allow_null) |s| s.deinit();
+        const allow_null = if (node.getAttrib("allow_null")) |str| std.mem.eql(u8, str, "true") else false;
 
         const @"enum" = if (node.getAttrib("enum")) |str| blk: {
             var string = std.ArrayList(u8).init(allocator);
@@ -505,14 +414,10 @@ pub const Arg = struct {
 
     pub fn deinit(self: *const Arg) void {
         self.name.deinit();
-        self.type.deinit();
         if (self.summary) |str| {
             str.deinit();
         }
         if (self.interface) |str| {
-            str.deinit();
-        }
-        if (self.allow_null) |str| {
             str.deinit();
         }
 
@@ -585,3 +490,23 @@ fn processAllChildren(node: *xml_praser.Document.Node, name: []const u8, comptim
 
     return ts;
 }
+
+pub const Type = enum {
+    int,
+    uint,
+    fixed,
+    string,
+    object,
+    new_id,
+    array,
+    fd,
+
+    pub fn parse(str: []const u8) !Type {
+        inline for (std.meta.fieldNames(Type)) |name| {
+            if (std.mem.eql(u8, str, name)) {
+                return std.meta.stringToEnum(Type, name) orelse undefined;
+            }
+        }
+        return error.type_parse;
+    }
+};
