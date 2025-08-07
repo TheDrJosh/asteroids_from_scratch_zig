@@ -15,6 +15,30 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    const scanner_dep = b.dependency("scanner", .{
+        .target = b.graph.host,
+    });
+
+    const scanner_mod = scanner_dep.module("scanner");
+
+    const scanner = b.addExecutable(.{
+        .name = "wayland_scanner",
+        .root_module = scanner_mod,
+    });
+
+    const wayland_protocol_path = b.option(std.Build.LazyPath, "wayland_protocol_path", "path to a valid wayland.xml") orelse std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland/wayland.xml" };
+    const protocol_paths = b.option([]const std.Build.LazyPath, "protocol_paths", "path to a valid wayland protocol xml paths");
+
+    const scanner_step = b.addRunArtifact(scanner);
+
+    const output = scanner_step.addOutputFileArg("protocols.zig");
+    scanner_step.addFileArg(wayland_protocol_path);
+    if (protocol_paths) |paths| {
+        for (paths) |p| {
+            scanner_step.addFileArg(p);
+        }
+    }
+
     const unix_domain_socket_lib_mod = b.createModule(.{
         .target = target,
         .optimize = optimize,
@@ -45,6 +69,20 @@ pub fn build(b: *std.Build) void {
 
     lib_mod.linkLibrary(unix_domain_socket_lib);
     lib_mod.addIncludePath(b.path("src/unix_domain_socket_lib/"));
+
+    const protocol_mod = b.createModule(.{
+        .root_source_file = output,
+        .target = target,
+        .optimize = optimize,
+    });
+
+    protocol_mod.addImport("wayland_client", lib_mod);
+
+    lib_mod.addImport("protocols", protocol_mod);
+
+    // lib_mod.create("protocols", .{
+    //     .root_source_file = output,
+    // });
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.

@@ -27,7 +27,7 @@ pub fn getAttrib(self: *Node, name: []const u8) ?[]const u8 {
     return null;
 }
 
-pub fn find(self: *Node, path: []const u8) *Node {
+pub fn find(self: *Node, path: []const u8) ?*Node {
     const slash_index = std.mem.indexOf(u8, path, "/");
 
     const name = if (slash_index) |index| path[0..index] else path;
@@ -36,16 +36,18 @@ pub fn find(self: *Node, path: []const u8) *Node {
         switch (child) {
             .node => |node| {
                 if (std.mem.eql(u8, node.name, name)) {
-                    if (slash_index == null) {
-                        return node;
+                    if (slash_index) |i| {
+                        return node.find(path[(i + 1)..]);
                     } else {
-                        return node.find(path[(slash_index + 1)..]);
+                        return node;
                     }
                 }
             },
             .text => {},
         }
     }
+
+    return null;
 }
 
 pub const Iterator = struct {
@@ -57,7 +59,7 @@ pub const Iterator = struct {
 
     pub fn next(self: *Iterator) !?*Node {
         if (self.inner_iter) |iter| {
-            if (iter.next()) |n| {
+            if (try iter.next()) |n| {
                 return n;
             } else {
                 iter.deinit();
@@ -74,20 +76,22 @@ pub const Iterator = struct {
             switch (self.node.children[self.index]) {
                 .node => |node| {
                     if (std.mem.eql(u8, node.name, name)) {
-                        if (slash_index == null) {
-                            return node;
-                        } else {
+                        if (slash_index) |i| {
                             const iter = try self.allocator.create(Iterator);
-                            iter.* = node.findAll(self.path[(slash_index + 1)..], self.allocator);
+                            iter.* = node.findAll(self.path[(i + 1)..], self.allocator);
                             self.inner_iter = iter;
 
                             return try iter.next();
+                        } else {
+                            return node;
                         }
                     }
                 },
                 .text => {},
             }
         }
+
+        return null;
     }
 
     pub fn deinit(self: *const Iterator) void {

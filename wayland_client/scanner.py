@@ -6,6 +6,7 @@ protocols = [
     "/usr/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml",
 ]
 
+
 def main():
     protocols_zig = open("./src/protocols.zig", "w")
 
@@ -220,9 +221,7 @@ def main():
                 for arg in request.findall("./arg"):
                     if arg.attrib["type"] == "string":
                         zig_file.write(
-                            "types.String{.static = "
-                            + arg.attrib["name"]
-                            + "}, "
+                            "types.String{.static = " + arg.attrib["name"] + "}, "
                         )
                     elif arg.attrib["type"] == "new_id":
                         if "interface" not in arg.attrib:
@@ -351,7 +350,7 @@ def main():
                     + ')).@"fn".return_type.?).error_union.payload).optional.child);\n'
                 )
 
-                zig_file.write("}\n")
+                zig_file.write("    }\n")
 
                 opcode += 1
 

@@ -11,7 +11,7 @@ const types = @import("types.zig");
 
 const Message = @import("Message.zig");
 
-const wayland_protocol = @import("protocols/wayland.zig");
+const wayland_protocol = @import("protocols").wayland;
 
 fn lessThan(context: void, a: types.ObjectId, b: types.ObjectId) std.math.Order {
     _ = context;

@@ -175,7 +175,7 @@ pub const wl_display = struct {
     /// 
     pub fn next_error(self: *const wl_display) !?struct {object_id: types.ObjectId, code: u32, message: types.String, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_error)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # delete_id
     /// 
@@ -206,7 +206,7 @@ pub const wl_display = struct {
     /// 
     pub fn next_delete_id(self: *const wl_display) !?struct {id: u32, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_delete_id)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_registry
@@ -336,7 +336,7 @@ pub const wl_registry = struct {
     /// 
     pub fn next_global(self: *const wl_registry) !?struct {name: u32, interface: types.String, version: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_global)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # global_remove
     /// 
@@ -372,7 +372,7 @@ pub const wl_registry = struct {
     /// 
     pub fn next_global_remove(self: *const wl_registry) !?struct {name: u32, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_global_remove)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_callback
@@ -423,7 +423,7 @@ pub const wl_callback = struct {
     /// 
     pub fn next_done(self: *const wl_callback) !?struct {callback_data: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_done)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_compositor
@@ -992,7 +992,7 @@ pub const wl_shm = struct {
     /// 
     pub fn next_format(self: *const wl_shm) !?struct {format: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_format)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_buffer
@@ -1074,7 +1074,7 @@ pub const wl_buffer = struct {
     /// 
     pub fn next_release(self: *const wl_buffer) !?struct {} {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_release)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_data_offer
@@ -1361,7 +1361,7 @@ pub const wl_data_offer = struct {
     /// 
     pub fn next_offer(self: *const wl_data_offer) !?struct {mime_type: types.String, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_offer)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # source_actions
     /// 
@@ -1395,7 +1395,7 @@ pub const wl_data_offer = struct {
     /// 
     pub fn next_source_actions(self: *const wl_data_offer) !?struct {source_actions: u32, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_source_actions)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # action
     /// 
@@ -1460,7 +1460,7 @@ pub const wl_data_offer = struct {
     /// 
     pub fn next_action(self: *const wl_data_offer) !?struct {dnd_action: u32, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_action)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_data_source
@@ -1611,7 +1611,7 @@ pub const wl_data_source = struct {
     /// 
     pub fn next_target(self: *const wl_data_source) !?struct {mime_type: types.String, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_target)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # send
     /// 
@@ -1650,7 +1650,7 @@ pub const wl_data_source = struct {
     /// 
     pub fn next_send(self: *const wl_data_source) !?struct {mime_type: types.String, fd: types.Fd, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_send)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # cancelled
     /// 
@@ -1686,7 +1686,7 @@ pub const wl_data_source = struct {
     /// 
     pub fn next_cancelled(self: *const wl_data_source) !?struct {} {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_cancelled)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # dnd_drop_performed
     /// 
@@ -1711,7 +1711,7 @@ pub const wl_data_source = struct {
     /// 
     pub fn next_dnd_drop_performed(self: *const wl_data_source) !?struct {} {
         return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_dnd_drop_performed)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # dnd_finished
     /// 
@@ -1733,7 +1733,7 @@ pub const wl_data_source = struct {
     /// 
     pub fn next_dnd_finished(self: *const wl_data_source) !?struct {} {
         return try self.runtime.next(self.object_id, 4, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_dnd_finished)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # action
     /// 
@@ -1788,7 +1788,7 @@ pub const wl_data_source = struct {
     /// 
     pub fn next_action(self: *const wl_data_source) !?struct {dnd_action: u32, } {
         return try self.runtime.next(self.object_id, 5, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_action)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_data_device
@@ -2028,7 +2028,7 @@ pub const wl_data_device = struct {
     /// 
     pub fn next_data_offer(self: *const wl_data_device) !?struct {id: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_data_offer)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # enter
     /// 
@@ -2110,7 +2110,7 @@ pub const wl_data_device = struct {
     /// 
     pub fn next_enter(self: *const wl_data_device) !?struct {serial: u32, surface: types.ObjectId, x: types.Fixed, y: types.Fixed, id: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_enter)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # leave
     /// 
@@ -2129,7 +2129,7 @@ pub const wl_data_device = struct {
     /// 
     pub fn next_leave(self: *const wl_data_device) !?struct {} {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_leave)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # motion
     /// 
@@ -2179,7 +2179,7 @@ pub const wl_data_device = struct {
     /// 
     pub fn next_motion(self: *const wl_data_device) !?struct {time: u32, x: types.Fixed, y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_motion)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # drop
     /// 
@@ -2208,7 +2208,7 @@ pub const wl_data_device = struct {
     /// 
     pub fn next_drop(self: *const wl_data_device) !?struct {} {
         return try self.runtime.next(self.object_id, 4, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_drop)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # selection
     /// 
@@ -2254,7 +2254,7 @@ pub const wl_data_device = struct {
     /// 
     pub fn next_selection(self: *const wl_data_device) !?struct {id: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 5, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_selection)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_data_device_manager
@@ -3139,7 +3139,7 @@ pub const wl_shell_surface = struct {
     /// 
     pub fn next_ping(self: *const wl_shell_surface) !?struct {serial: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_ping)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # configure
     /// 
@@ -3206,7 +3206,7 @@ pub const wl_shell_surface = struct {
     /// 
     pub fn next_configure(self: *const wl_shell_surface) !?struct {edges: u32, width: i32, height: i32, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # popup_done
     /// 
@@ -3225,7 +3225,7 @@ pub const wl_shell_surface = struct {
     /// 
     pub fn next_popup_done(self: *const wl_shell_surface) !?struct {} {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_popup_done)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_surface
@@ -4010,7 +4010,7 @@ pub const wl_surface = struct {
     /// 
     pub fn next_enter(self: *const wl_surface) !?struct {output: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_enter)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # leave
     /// 
@@ -4049,7 +4049,7 @@ pub const wl_surface = struct {
     /// 
     pub fn next_leave(self: *const wl_surface) !?struct {output: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_leave)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # preferred_buffer_scale
     /// 
@@ -4087,7 +4087,7 @@ pub const wl_surface = struct {
     /// 
     pub fn next_preferred_buffer_scale(self: *const wl_surface) !?struct {factor: i32, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_preferred_buffer_scale)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # preferred_buffer_transform
     /// 
@@ -4126,7 +4126,7 @@ pub const wl_surface = struct {
     /// 
     pub fn next_preferred_buffer_transform(self: *const wl_surface) !?struct {transform: u32, } {
         return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_preferred_buffer_transform)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_seat
@@ -4372,7 +4372,7 @@ pub const wl_seat = struct {
     /// 
     pub fn next_capabilities(self: *const wl_seat) !?struct {capabilities: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_capabilities)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # name
     /// 
@@ -4414,7 +4414,7 @@ pub const wl_seat = struct {
     /// 
     pub fn next_name(self: *const wl_seat) !?struct {name: types.String, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_name)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_pointer
@@ -4708,7 +4708,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_enter(self: *const wl_pointer) !?struct {serial: u32, surface: types.ObjectId, surface_x: types.Fixed, surface_y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_enter)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # leave
     /// 
@@ -4753,7 +4753,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_leave(self: *const wl_pointer) !?struct {serial: u32, surface: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_leave)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # motion
     /// 
@@ -4802,7 +4802,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_motion(self: *const wl_pointer) !?struct {time: u32, surface_x: types.Fixed, surface_y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_motion)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # button
     /// 
@@ -4876,7 +4876,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_button(self: *const wl_pointer) !?struct {serial: u32, time: u32, button: u32, state: u32, } {
         return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_button)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # axis
     /// 
@@ -4942,7 +4942,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_axis(self: *const wl_pointer) !?struct {time: u32, axis: u32, value: types.Fixed, } {
         return try self.runtime.next(self.object_id, 4, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_axis)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # frame
     /// 
@@ -4992,7 +4992,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_frame(self: *const wl_pointer) !?struct {} {
         return try self.runtime.next(self.object_id, 5, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_frame)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # axis_source
     /// 
@@ -5047,7 +5047,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_axis_source(self: *const wl_pointer) !?struct {axis_source: u32, } {
         return try self.runtime.next(self.object_id, 6, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_axis_source)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # axis_stop
     /// 
@@ -5101,7 +5101,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_axis_stop(self: *const wl_pointer) !?struct {time: u32, axis: u32, } {
         return try self.runtime.next(self.object_id, 7, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_axis_stop)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # axis_discrete
     /// 
@@ -5171,7 +5171,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_axis_discrete(self: *const wl_pointer) !?struct {axis: u32, discrete: i32, } {
         return try self.runtime.next(self.object_id, 8, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_axis_discrete)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # axis_value120
     /// 
@@ -5232,7 +5232,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_axis_value120(self: *const wl_pointer) !?struct {axis: u32, value120: i32, } {
         return try self.runtime.next(self.object_id, 9, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_axis_value120)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # axis_relative_direction
     /// 
@@ -5311,7 +5311,7 @@ pub const wl_pointer = struct {
     /// 
     pub fn next_axis_relative_direction(self: *const wl_pointer) !?struct {axis: u32, direction: u32, } {
         return try self.runtime.next(self.object_id, 10, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_axis_relative_direction)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_keyboard
@@ -5439,7 +5439,7 @@ pub const wl_keyboard = struct {
     /// 
     pub fn next_keymap(self: *const wl_keyboard) !?struct {format: u32, fd: types.Fd, size: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_keymap)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # enter
     /// 
@@ -5499,7 +5499,7 @@ pub const wl_keyboard = struct {
     /// 
     pub fn next_enter(self: *const wl_keyboard) !?struct {serial: u32, surface: types.ObjectId, keys: std.ArrayList(u8), } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_enter)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # leave
     /// 
@@ -5549,7 +5549,7 @@ pub const wl_keyboard = struct {
     /// 
     pub fn next_leave(self: *const wl_keyboard) !?struct {serial: u32, surface: types.ObjectId, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_leave)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # key
     /// 
@@ -5627,7 +5627,7 @@ pub const wl_keyboard = struct {
     /// 
     pub fn next_key(self: *const wl_keyboard) !?struct {serial: u32, time: u32, key: u32, state: u32, } {
         return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_key)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # modifiers
     /// 
@@ -5706,7 +5706,7 @@ pub const wl_keyboard = struct {
     /// 
     pub fn next_modifiers(self: *const wl_keyboard) !?struct {serial: u32, mods_depressed: u32, mods_latched: u32, mods_locked: u32, group: u32, } {
         return try self.runtime.next(self.object_id, 4, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_modifiers)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # repeat_info
     /// 
@@ -5754,7 +5754,7 @@ pub const wl_keyboard = struct {
     /// 
     pub fn next_repeat_info(self: *const wl_keyboard) !?struct {rate: i32, delay: i32, } {
         return try self.runtime.next(self.object_id, 5, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_repeat_info)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_touch
@@ -5875,7 +5875,7 @@ pub const wl_touch = struct {
     /// 
     pub fn next_down(self: *const wl_touch) !?struct {serial: u32, time: u32, surface: types.ObjectId, id: i32, x: types.Fixed, y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_down)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # up
     /// 
@@ -5924,7 +5924,7 @@ pub const wl_touch = struct {
     /// 
     pub fn next_up(self: *const wl_touch) !?struct {serial: u32, time: u32, id: i32, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_up)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # motion
     /// 
@@ -5981,7 +5981,7 @@ pub const wl_touch = struct {
     /// 
     pub fn next_motion(self: *const wl_touch) !?struct {time: u32, id: i32, x: types.Fixed, y: types.Fixed, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_motion)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # frame
     /// 
@@ -6005,7 +6005,7 @@ pub const wl_touch = struct {
     /// 
     pub fn next_frame(self: *const wl_touch) !?struct {} {
         return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_frame)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # cancel
     /// 
@@ -6029,7 +6029,7 @@ pub const wl_touch = struct {
     /// 
     pub fn next_cancel(self: *const wl_touch) !?struct {} {
         return try self.runtime.next(self.object_id, 4, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_cancel)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # shape
     /// 
@@ -6100,7 +6100,7 @@ pub const wl_touch = struct {
     /// 
     pub fn next_shape(self: *const wl_touch) !?struct {id: i32, major: types.Fixed, minor: types.Fixed, } {
         return try self.runtime.next(self.object_id, 5, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_shape)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # orientation
     /// 
@@ -6159,7 +6159,7 @@ pub const wl_touch = struct {
     /// 
     pub fn next_orientation(self: *const wl_touch) !?struct {id: i32, orientation: types.Fixed, } {
         return try self.runtime.next(self.object_id, 6, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_orientation)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_output
@@ -6392,7 +6392,7 @@ pub const wl_output = struct {
     /// 
     pub fn next_geometry(self: *const wl_output) !?struct {x: i32, y: i32, physical_width: i32, physical_height: i32, subpixel: i32, make: types.String, model: types.String, transform: i32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_geometry)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # mode
     /// 
@@ -6485,7 +6485,7 @@ pub const wl_output = struct {
     /// 
     pub fn next_mode(self: *const wl_output) !?struct {flags: u32, width: i32, height: i32, refresh: i32, } {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_mode)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # done
     /// 
@@ -6506,7 +6506,7 @@ pub const wl_output = struct {
     /// 
     pub fn next_done(self: *const wl_output) !?struct {} {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_done)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # scale
     /// 
@@ -6550,7 +6550,7 @@ pub const wl_output = struct {
     /// 
     pub fn next_scale(self: *const wl_output) !?struct {factor: i32, } {
         return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_scale)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # name
     /// 
@@ -6604,7 +6604,7 @@ pub const wl_output = struct {
     /// 
     pub fn next_name(self: *const wl_output) !?struct {name: types.String, } {
         return try self.runtime.next(self.object_id, 4, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_name)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # description
     /// 
@@ -6644,7 +6644,7 @@ pub const wl_output = struct {
     /// 
     pub fn next_description(self: *const wl_output) !?struct {description: types.String, } {
         return try self.runtime.next(self.object_id, 5, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_description)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # wl_region

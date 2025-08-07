@@ -36,7 +36,9 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
-  
+        .scanner = .{
+            .path = "scanner"
+        }
     },
     .paths = .{
         "build.zig",

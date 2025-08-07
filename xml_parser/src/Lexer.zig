@@ -61,11 +61,12 @@ fn inner_next(self: *Lexer) Error!?Token {
     errdefer {
         std.debug.print("Lexer Error current: {}, line: {}", .{ self.current, self.line });
     }
-    const start = self.current;
-    const line = self.line;
 
     if (self.inside_tag) {
         self.skipWhitespace();
+
+        const start = self.current;
+        const line = self.line;
 
         switch (self.advance() orelse return null) {
             '=' => {
@@ -127,6 +128,8 @@ fn inner_next(self: *Lexer) Error!?Token {
             },
         }
     } else {
+        const start = self.current;
+        const line = self.line;
         if ((self.advance() orelse return null) == '<') {
             const is_end = switch (self.advance() orelse 0) {
                 '/' => true,

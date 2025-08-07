@@ -276,5 +276,5 @@ pub const zxdg_toplevel_decoration_v1 = struct {
     /// 
     pub fn next_configure(self: *const zxdg_toplevel_decoration_v1) !?struct {mode: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };

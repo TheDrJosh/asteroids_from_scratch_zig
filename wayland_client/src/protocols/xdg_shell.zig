@@ -204,7 +204,7 @@ pub const xdg_wm_base = struct {
     /// 
     pub fn next_ping(self: *const xdg_wm_base) !?struct {serial: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_ping)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # xdg_positioner
@@ -1157,7 +1157,7 @@ pub const xdg_surface = struct {
     /// 
     pub fn next_configure(self: *const xdg_surface) !?struct {serial: u32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # xdg_toplevel
@@ -2150,7 +2150,7 @@ pub const xdg_toplevel = struct {
     /// 
     pub fn next_configure(self: *const xdg_toplevel) !?struct {width: i32, height: i32, states: std.ArrayList(u8), } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # close
     /// 
@@ -2174,7 +2174,7 @@ pub const xdg_toplevel = struct {
     /// 
     pub fn next_close(self: *const xdg_toplevel) !?struct {} {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_close)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # configure_bounds
     /// 
@@ -2217,7 +2217,7 @@ pub const xdg_toplevel = struct {
     /// 
     pub fn next_configure_bounds(self: *const xdg_toplevel) !?struct {width: i32, height: i32, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure_bounds)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # wm_capabilities
     /// 
@@ -2263,7 +2263,7 @@ pub const xdg_toplevel = struct {
     /// 
     pub fn next_wm_capabilities(self: *const xdg_toplevel) !?struct {capabilities: std.ArrayList(u8), } {
         return try self.runtime.next(self.object_id, 3, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_wm_capabilities)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };
 
 /// # xdg_popup
@@ -2535,7 +2535,7 @@ pub const xdg_popup = struct {
     /// 
     pub fn next_configure(self: *const xdg_popup) !?struct {x: i32, y: i32, width: i32, height: i32, } {
         return try self.runtime.next(self.object_id, 0, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_configure)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # popup_done
     /// 
@@ -2554,7 +2554,7 @@ pub const xdg_popup = struct {
     /// 
     pub fn next_popup_done(self: *const xdg_popup) !?struct {} {
         return try self.runtime.next(self.object_id, 1, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_popup_done)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 
     /// # repositioned
     /// 
@@ -2595,5 +2595,5 @@ pub const xdg_popup = struct {
     /// 
     pub fn next_repositioned(self: *const xdg_popup) !?struct {token: u32, } {
         return try self.runtime.next(self.object_id, 2, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next_repositioned)).@"fn".return_type.?).error_union.payload).optional.child);
-}
+    }
 };

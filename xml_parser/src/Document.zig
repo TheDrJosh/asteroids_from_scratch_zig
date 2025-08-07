@@ -2,7 +2,7 @@ const std = @import("std");
 
 const parser = @import("parser.zig");
 const Lexer = @import("Lexer.zig");
-const Node = @import("Node.zig");
+pub const Node = @import("Node.zig");
 
 const Document = @This();
 
