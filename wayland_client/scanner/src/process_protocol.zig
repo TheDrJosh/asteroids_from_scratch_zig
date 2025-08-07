@@ -20,7 +20,7 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
             try writeDocComment(writer, desc.description.items);
         }
         try writer.writeAll("pub const ");
-        try writer.writeAll(interface.name.items);
+        try writeHumpCase(interface.name.items, writer);
         tab_writer.indent += 1;
         try writer.writeAll(" = struct {\n");
 
@@ -31,9 +31,26 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
         try writer.writeAll("\nobject_id: types.ObjectId,\nruntime: *WaylandRuntime,\n");
 
         for (interface.enums.items) |@"enum"| {
-            if (@"enum".description) |desc| {
-                try writeDocComment(writer, desc.description.items);
+            {
+                var comment = std.ArrayList(u8).init(allocator);
+                defer comment.deinit();
+
+                if (@"enum".description) |desc| {
+                    try comment.appendSlice("## summary\n\n");
+                    try comment.appendSlice(desc.description.items);
+
+                    try comment.appendSlice("\n\n");
+                }
+
+                if (@"enum".since) |since| {
+                    try comment.appendSlice("## since\n\n");
+                    try comment.writer().print("{}", .{since});
+
+                    try comment.appendSlice("\n\n");
+                }
+                try writeDocComment(writer, comment.items);
             }
+
             try writer.writeAll("pub const ");
 
             try writeHumpCase(@"enum".name.items, writer);
@@ -185,7 +202,109 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
             try writer.writeAll("\n};\n");
         }
 
-        
+        for (interface.requests.items) |request| {
+            {
+                var comment = std.ArrayList(u8).init(allocator);
+                defer comment.deinit();
+
+                if (request.description) |desc| {
+                    try comment.appendSlice("## summary\n\n");
+                    try comment.appendSlice(desc.description.items);
+
+                    try comment.appendSlice("\n\n");
+                }
+
+                if (request.since) |since| {
+                    try comment.appendSlice("## since\n\n");
+                    try comment.writer().print("{}", .{since});
+
+                    try comment.appendSlice("\n\n");
+                }
+
+                if (request.deprecated_since) |deprecated_since| {
+                    try comment.appendSlice("## deprecated since\n\n");
+                    try comment.writer().print("{}", .{deprecated_since});
+
+                    try comment.appendSlice("\n\n");
+                }
+                try writeDocComment(writer, comment.items);
+            }
+
+            try writer.writeAll("pub fn ");
+
+            try writeCammelCase(request.name.items, writer);
+
+            try writer.writeAll("(self: *const ");
+
+            try writeHumpCase(interface.name.items, writer);
+
+            for (request.args.items) |arg| {
+                _ = arg;
+
+                
+            }
+
+            try writer.writeAll(") void");
+
+            tab_writer.indent += 1;
+
+            try writer.writeAll("{\n");
+
+            try writer.writeAll("_ = self;\n");
+
+            tab_writer.indent -= 1;
+
+            try writer.writeAll("\n}\n");
+        }
+
+        for (interface.events.items) |events| {
+            {
+                var comment = std.ArrayList(u8).init(allocator);
+                defer comment.deinit();
+
+                if (events.description) |desc| {
+                    try comment.appendSlice("## summary\n\n");
+                    try comment.appendSlice(desc.description.items);
+
+                    try comment.appendSlice("\n\n");
+                }
+
+                if (events.since) |since| {
+                    try comment.appendSlice("## since\n\n");
+                    try comment.writer().print("{}", .{since});
+
+                    try comment.appendSlice("\n\n");
+                }
+
+                if (events.deprecated_since) |deprecated_since| {
+                    try comment.appendSlice("## deprecated since\n\n");
+                    try comment.writer().print("{}", .{deprecated_since});
+
+                    try comment.appendSlice("\n\n");
+                }
+                try writeDocComment(writer, comment.items);
+            }
+
+            try writer.writeAll("pub fn next");
+
+            try writeCammelCase(events.name.items, writer);
+
+            try writer.writeAll("(self: *const ");
+
+            try writeHumpCase(interface.name.items, writer);
+
+            try writer.writeAll(") void");
+
+            tab_writer.indent += 1;
+
+            try writer.writeAll("{\n");
+
+            try writer.writeAll("_ = self;\n");
+
+            tab_writer.indent -= 1;
+
+            try writer.writeAll("\n}\n");
+        }
 
         tab_writer.indent -= 1;
 
@@ -198,6 +317,11 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
 }
 
 fn writeDocComment(writer: writers.TabWriter(std.fs.File.Writer).Writer, comment: []const u8) !void {
+    if (comment.len == 0) {
+        try writer.writeAll("\n");
+        return;
+    }
+
     try writer.writeAll("\n/// ");
     var i: usize = 0;
     while (i < comment.len and std.ascii.isWhitespace(comment[i])) {
@@ -258,6 +382,20 @@ pub fn writeHumpCase(text: []const u8, writer: writers.TabWriter(std.fs.File.Wri
             try writer.writeByte(std.ascii.toUpper(text[i]));
             i += 1;
         } else if (text[i] == '_' and i != text.len - 1) {
+            try writer.writeByte(std.ascii.toUpper(text[i + 1]));
+            i += 2;
+        } else {
+            try writer.writeByte(text[i]);
+            i += 1;
+        }
+    }
+}
+
+pub fn writeCammelCase(text: []const u8, writer: writers.TabWriter(std.fs.File.Writer).Writer) !void {
+    var i: usize = 0;
+
+    while (i < text.len) {
+        if (text[i] == '_' and i != text.len - 1) {
             try writer.writeByte(std.ascii.toUpper(text[i + 1]));
             i += 2;
         } else {

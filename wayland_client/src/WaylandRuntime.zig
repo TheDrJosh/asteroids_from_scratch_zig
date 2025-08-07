@@ -44,7 +44,7 @@ pub fn deinit(self: *const WaylandRuntime) void {
     self.event_buffer.deinit();
 }
 
-pub fn display(self: *WaylandRuntime) wayland_protocol.wl_display {
+pub fn display(self: *WaylandRuntime) wayland_protocol.WlDisplay {
     return .{
         .object_id = 1,
         .runtime = self,

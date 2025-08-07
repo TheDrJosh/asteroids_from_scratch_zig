@@ -147,7 +147,7 @@ pub fn main() !void {
 
     const display = runtime.display();
 
-    const registry = (try display.get_registry()).registry;
+    const registry = (try display.getRegistry()).registry;
 
     const sync_callback = (try display.sync()).callback;
 

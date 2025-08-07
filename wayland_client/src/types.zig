@@ -1,5 +1,6 @@
 const std = @import("std");
 
+//TODO - make non-zero u32
 pub const ObjectId = u32;
 
 pub const NewId = struct {
