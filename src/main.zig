@@ -7,7 +7,7 @@ const wayland_types = wayland_client.types;
 const protocols = wayland_client.protocols;
 
 const GlobalManager = struct {
-    registry: protocols.wayland.wl_registry,
+    registry: protocols.wayland.WlRegistry,
     globals: std.ArrayList(GlobalInfo),
 
     const GlobalInfo = struct {
@@ -16,7 +16,7 @@ const GlobalManager = struct {
         version: u32,
     };
 
-    pub fn init(registry: protocols.wayland.wl_registry, allocator: std.mem.Allocator) GlobalManager {
+    pub fn init(registry: protocols.wayland.WlRegistry, allocator: std.mem.Allocator) GlobalManager {
         return .{
             .registry = registry,
             .globals = std.ArrayList(GlobalInfo).init(allocator),
@@ -31,7 +31,7 @@ const GlobalManager = struct {
     }
 
     pub fn bind(self: *GlobalManager, T: type) !?T {
-        while (try self.registry.next_global()) |global| {
+        while (try self.registry.nextGlobal()) |global| {
             try self.globals.append(.{
                 .name = global.name,
                 .version = global.version,
@@ -40,7 +40,7 @@ const GlobalManager = struct {
             // std.debug.print("Global(name: {}, interface: {s}, version: {})\n", .{ global.name, global.interface.data(), global.version });
         }
 
-        while (try self.registry.next_global_remove()) |global| {
+        while (try self.registry.nextGlobalRemove()) |global| {
             for (0..self.globals.items.len) |i| {
                 if (self.globals.items[i].name == global.name) {
                     self.globals.swapRemove(i).interface.deinit();
@@ -51,7 +51,7 @@ const GlobalManager = struct {
 
         for (0..self.globals.items.len) |i| {
             if (std.mem.eql(u8, self.globals.items[i].interface.data(), T.interface)) {
-                return (try self.registry.bind(self.globals.items[i].name, T, self.globals.items[i].version)).id;
+                return (try self.registry.bind(self.globals.items[i].name, T, self.globals.items[i].version));
             }
         }
         return null;
@@ -109,7 +109,7 @@ fn allocateShmFile(size: usize) !std.posix.fd_t {
 const width = 800;
 const height = 600;
 
-fn drawFrame(wl_shm: protocols.wayland.wl_shm) !protocols.wayland.wl_buffer {
+fn drawFrame(wl_shm: protocols.wayland.WlShm) !protocols.wayland.WlBuffer {
     const stride = width * 4;
     const size = height * stride;
 
@@ -117,10 +117,10 @@ fn drawFrame(wl_shm: protocols.wayland.wl_shm) !protocols.wayland.wl_buffer {
     defer std.posix.close(fd);
     const data = try std.posix.mmap(null, size, std.posix.PROT.READ | std.posix.PROT.WRITE, std.posix.MAP{ .TYPE = .SHARED }, fd, 0);
     defer std.posix.munmap(data);
-    const pool = (try wl_shm.create_pool(wayland_types.Fd{ .fd = fd }, size)).id;
+    const pool = try wl_shm.createPool(fd, size);
     defer pool.destroy() catch unreachable;
 
-    const buffer = (try pool.create_buffer(0, width, height, stride, @intFromEnum(protocols.wayland.wl_shm.enums.format.xrgb8888))).id;
+    const buffer = try pool.createBuffer(0, width, height, stride, protocols.wayland.WlShm.Format.xrgb8888);
 
     const pixels = std.mem.bytesAsSlice(u32, data);
 
@@ -147,51 +147,64 @@ pub fn main() !void {
 
     const display = runtime.display();
 
-    const registry = (try display.getRegistry()).registry;
+    const registry = (try display.getRegistry());
 
-    const sync_callback = (try display.sync()).callback;
+    const sync_callback = (try display.sync());
 
-    while (try sync_callback.next_done() == null) {}
+    while (try sync_callback.nextDone() == null) {}
 
     var global_manager = GlobalManager.init(registry, allocator);
     defer global_manager.deinit();
 
-    const compositor = try global_manager.bind(protocols.wayland.wl_compositor) orelse unreachable;
+    const compositor = try global_manager.bind(protocols.wayland.WlCompositor) orelse unreachable;
 
-    const surface = (try compositor.create_surface()).id;
+    const surface = (try compositor.createSurface());
 
-    const wl_shm = try global_manager.bind(protocols.wayland.wl_shm) orelse unreachable;
+    const wl_shm = try global_manager.bind(protocols.wayland.WlShm) orelse unreachable;
 
-    const wm_base = try global_manager.bind(protocols.xdg_shell.xdg_wm_base) orelse unreachable;
+    const wm_base = try global_manager.bind(protocols.xdg_shell.XdgWmBase) orelse unreachable;
 
-    const xdg_surface = (try wm_base.get_xdg_surface(surface.object_id)).id;
+    const xdg_surface = (try wm_base.getXdgSurface(surface));
 
-    const toplevel_surface = (try xdg_surface.get_toplevel()).id;
+    const toplevel_surface = (try xdg_surface.getToplevel());
 
-    try toplevel_surface.set_title("test");
+    try toplevel_surface.setTitle("test");
     try surface.commit();
 
-    const decoration_manager = try global_manager.bind(protocols.xdg_decoration_unstable_v1.zxdg_decoration_manager_v1) orelse unreachable;
+    const decoration_manager = try global_manager.bind(protocols.xdg_decoration_unstable_v1.ZxdgDecorationManagerV1) orelse unreachable;
     defer decoration_manager.destroy() catch unreachable;
 
-    const decoration = (try decoration_manager.get_toplevel_decoration(toplevel_surface.object_id)).id;
+    const decoration = (try decoration_manager.getToplevelDecoration(toplevel_surface));
 
-    try decoration.set_mode(@intFromEnum(protocols.xdg_decoration_unstable_v1.zxdg_toplevel_decoration_v1.enums.mode.server_side));
+    try decoration.setMode(protocols.xdg_decoration_unstable_v1.ZxdgToplevelDecorationV1.Mode.server_side);
+
+    const seat = try global_manager.bind(protocols.wayland.WlSeat) orelse undefined;
+
+    const keyboard = try seat.getKeyboard();
+
+    const bell = try global_manager.bind(protocols.xdg_system_bell_v1.XdgSystemBellV1) orelse undefined;
 
     while (true) {
-        if (try xdg_surface.next_configure()) |conf| {
-            try xdg_surface.ack_configure(conf.serial);
+        if (try xdg_surface.nextConfigure()) |conf| {
+            try xdg_surface.ackConfigure(conf.serial);
             const buffer = try drawFrame(wl_shm);
 
-            try surface.attach(buffer.object_id, 0, 0);
+            try surface.attach(buffer, 0, 0);
             try surface.commit();
         }
 
-        if (try wm_base.next_ping()) |ping| {
+        if (try wm_base.nextPing()) |ping| {
             try wm_base.pong(ping.serial);
         }
 
-        if (try toplevel_surface.next_close()) |_| {
+        while (try keyboard.nextKey()) |key| {
+            std.debug.print("{any}\n", .{key});
+            if (key.state == .pressed) {
+                try bell.ring(surface);
+            }
+        }
+
+        if (try toplevel_surface.nextClose()) {
             break;
         }
     }

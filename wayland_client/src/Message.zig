@@ -67,13 +67,13 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
                 switch (@typeInfo(E)) {
                     .@"enum" => |e| {
                         if (e.tag_type == u32 or e.tag_type == i32) {
-                            field.* = @bitCast(try data_reader.readInt(u32, native_endian));
+                            field.* = @enumFromInt(try data_reader.readInt(u32, native_endian));
                         } else {
                             @compileError("invalid enum arg. enum must have 32 bit tag type");
                         }
                     },
                     else => {
-                        @compileError("invalid arg");
+                        @compileError("invalid arg " ++ @typeName(E));
                     },
                 }
             },

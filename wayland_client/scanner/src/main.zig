@@ -4,6 +4,7 @@ const xml_parser = @import("xml_parser");
 
 const wayland = @import("wayland.zig");
 const process_protocol = @import("process_protocol.zig");
+const NamespaceResolver = @import("NamespaceResolver.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -29,6 +30,14 @@ pub fn main() !void {
         \\
     );
 
+    var protocols = std.ArrayList(wayland.Protocol).init(allocator);
+    defer {
+        for (protocols.items) |protocol| {
+            protocol.deinit();
+        }
+        protocols.deinit();
+    }
+
     while (arg.next()) |input_file_name| {
         const input_file = try std.fs.cwd().openFile(input_file_name, .{});
         defer input_file.close();
@@ -40,8 +49,19 @@ pub fn main() !void {
         defer xml.deinit();
 
         const protocol = try wayland.Protocol.init(xml.root, allocator);
-        defer protocol.deinit();
+        errdefer protocol.deinit();
 
-        try process_protocol.processProtocol(protocol, output_file_writer, allocator);
+        try protocols.append(protocol);
+    }
+
+    var resolver = NamespaceResolver.init(allocator);
+    defer resolver.deinit();
+
+    for (protocols.items) |protocol| {
+        try resolver.registerProtocol(protocol);
+    }
+
+    for (protocols.items) |protocol| {
+        try process_protocol.processProtocol(protocol, output_file_writer, resolver, allocator);
     }
 }

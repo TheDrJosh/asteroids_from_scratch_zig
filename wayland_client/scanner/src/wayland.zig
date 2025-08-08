@@ -305,7 +305,7 @@ pub const Enum = struct {
 
 pub const Entry = struct {
     name: std.ArrayList(u8),
-    value: i64,
+    value: u32,
     summary: ?std.ArrayList(u8),
     since: ?u32,
     deprecated_since: ?u32,
@@ -317,7 +317,14 @@ pub const Entry = struct {
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
-        const value = if (node.getAttrib("value")) |str| try std.fmt.parseInt(i32, str, 0) else return error.no_value;
+        const value = if (node.getAttrib("value")) |str| blk: {
+            const n = try std.fmt.parseInt(i64, str, 0);
+            if (n >= 0) {
+                break :blk @as(u32, @intCast(n));
+            } else {
+                break :blk @as(u32, @bitCast(@as(i32, @intCast(n))));
+            }
+        } else return error.no_value;
 
         const summary = if (node.getAttrib("summary")) |str| blk: {
             var string = std.ArrayList(u8).init(allocator);
@@ -430,7 +437,7 @@ pub const Arg = struct {
     }
 };
 
-const Description = struct {
+pub const Description = struct {
     summary: std.ArrayList(u8),
     description: std.ArrayList(u8),
 

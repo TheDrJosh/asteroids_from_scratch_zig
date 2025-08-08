@@ -115,10 +115,13 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
                 switch (@typeInfo(T)) {
                     .@"enum" => |e| {
                         if (e.tag_type == u32 or e.tag_type == i32) {
-                            try message_writer.writeInt(u32, @bitCast(field), native_endian);
+                            try message_writer.writeInt(u32, @intFromEnum(field), native_endian);
                         } else {
                             @compileError("invalid enum arg. enum must have 32 bit tag type");
                         }
+                    },
+                    .@"struct" => {
+                        try message_writer.writeInt(u32, field.object_id, native_endian);
                     },
                     else => {
                         @compileError("invalid arg");

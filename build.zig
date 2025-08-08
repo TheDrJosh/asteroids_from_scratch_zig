@@ -18,6 +18,15 @@ pub fn build(b: *std.Build) void {
     const wayland_client_dep = b.dependency("wayland_client", .{
         .target = target,
         .optimize = optimize,
+        .protocol_paths = @as([]const std.Build.LazyPath, &[_]std.Build.LazyPath{
+            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml" },
+            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml" },
+            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml" },
+            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/unstable/idle-inhibit/idle-inhibit-unstable-v1.xml" },
+            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/tearing-control/tearing-control-v1.xml" },
+            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/content-type/content-type-v1.xml" },
+            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/xdg-system-bell/xdg-system-bell-v1.xml" },
+        }),
     });
 
     const wayland_client = wayland_client_dep.module("wayland_client");
