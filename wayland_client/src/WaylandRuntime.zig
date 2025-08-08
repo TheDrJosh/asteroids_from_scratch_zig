@@ -123,6 +123,13 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
                     .@"struct" => {
                         try message_writer.writeInt(u32, field.object_id, native_endian);
                     },
+                    .optional => {
+                        if (field) |f| {
+                            try message_writer.writeInt(u32, f.object_id, native_endian);
+                        } else {
+                            try message_writer.writeInt(u32, 0, native_endian);
+                        }
+                    },
                     else => {
                         @compileError("invalid arg");
                     },

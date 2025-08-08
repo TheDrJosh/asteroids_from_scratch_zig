@@ -395,7 +395,7 @@ pub const Arg = struct {
         } else null;
         errdefer if (interface) |s| s.deinit();
 
-        const allow_null = if (node.getAttrib("allow_null")) |str| std.mem.eql(u8, str, "true") else false;
+        const allow_null = if (node.getAttrib("allow-null")) |str| std.mem.eql(u8, str, "true") else false;
 
         const @"enum" = if (node.getAttrib("enum")) |str| blk: {
             var string = std.ArrayList(u8).init(allocator);

@@ -200,7 +200,7 @@ pub fn main() !void {
         while (try keyboard.nextKey()) |key| {
             std.debug.print("{any}\n", .{key});
             if (key.state == .pressed) {
-                try bell.ring(surface);
+                try bell.ring(null);
             }
         }
 
