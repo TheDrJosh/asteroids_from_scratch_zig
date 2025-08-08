@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const scanner_dep = b.dependency("scanner", .{
+    const scanner_dep = b.dependency("wayland_scanner", .{
         .target = b.graph.host,
     });
 
