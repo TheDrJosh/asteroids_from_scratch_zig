@@ -63,7 +63,7 @@ pub fn registerProtocol(self: *NamespaceResolver, protocol: wayland.Protocol) !v
 
 pub fn writeResolvedInterface(
     self: *const NamespaceResolver,
-    writer: writers.TabWriter(std.fs.File.Writer).Writer,
+    writer: *std.io.Writer,
     // current_protocol: []const u8,
     name: []const u8,
 ) !void {
@@ -82,20 +82,20 @@ pub fn writeResolvedInterface(
         }
     }
 
-    try utils.writePascalCase(name, writer);
+    try utils.writePascalCase(writer, name);
 }
 
 pub fn writeResolvedEnum(
     self: *const NamespaceResolver,
-    writer: writers.TabWriter(std.fs.File.Writer).Writer,
+    writer: *std.io.Writer,
     name: []const u8,
 ) !void {
     if (std.mem.indexOf(u8, name, ".")) |index| {
         try self.writeResolvedInterface(writer, name[0..index]);
         try writer.writeByte('.');
-        try utils.writePascalCase(name[(index + 1)..], writer);
+        try utils.writePascalCase(writer, name[(index + 1)..]);
     } else {
-        try utils.writePascalCase(name, writer);
+        try utils.writePascalCase(writer, name);
     }
 }
 

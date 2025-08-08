@@ -9,9 +9,9 @@ const process_enums = @import("process_protocol/enums.zig");
 const process_requests = @import("process_protocol/requests.zig");
 const process_events = @import("process_protocol/events.zig");
 
-pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.File.Writer, resolver: NamespaceResolver, allocator: std.mem.Allocator) !void {
-    var tab_writer = writers.TabWriter(std.fs.File.Writer).init(output_file_writer);
-    const writer = tab_writer.writer();
+pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: *std.io.Writer, resolver: NamespaceResolver, allocator: std.mem.Allocator) !void {
+    var tab_writer = writers.TabWriter.init(output_file_writer);
+    const writer = &tab_writer.interface;
 
     try utils.writeFormatedDocComment(
         writer,
@@ -40,7 +40,7 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: std.fs.Fi
         );
 
         try writer.writeAll("pub const ");
-        try utils.writePascalCase(interface.name.items, writer);
+        try utils.writePascalCase(writer, interface.name.items);
         tab_writer.indent += 1;
         try writer.writeAll(" = struct {\n");
 

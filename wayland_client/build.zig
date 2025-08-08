@@ -26,8 +26,18 @@ pub fn build(b: *std.Build) void {
         .root_module = scanner_mod,
     });
 
-    const wayland_protocol_path = b.option(std.Build.LazyPath, "wayland_protocol_path", "path to a valid wayland.xml") orelse std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland/wayland.xml" };
-    const protocol_paths = b.option([]const std.Build.LazyPath, "protocol_paths", "path to a valid wayland protocol xml paths");
+    const wayland_protocol_path = b.option(
+        std.Build.LazyPath,
+        "wayland_protocol_path",
+        "path to a valid wayland.xml",
+    ) orelse std.Build.LazyPath{
+        .cwd_relative = "/usr/share/wayland/wayland.xml",
+    };
+    const protocol_paths = b.option(
+        []const std.Build.LazyPath,
+        "protocol_paths",
+        "path to a valid wayland protocol xml paths",
+    );
 
     const scanner_step = b.addRunArtifact(scanner);
 

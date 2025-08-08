@@ -20,7 +20,10 @@ pub fn main() !void {
 
     const output_file = try std.fs.cwd().createFile(output_file_name, .{});
     defer output_file.close();
-    const output_file_writer = output_file.writer();
+    var output_buf = [1]u8{0} ** 1024;
+    var output_file_file_writer = output_file.writer(&output_buf);
+    const output_file_writer = &output_file_file_writer.interface;
+    defer output_file_writer.flush() catch unreachable;
 
     try output_file_writer.writeAll(
         \\const std = @import("std");

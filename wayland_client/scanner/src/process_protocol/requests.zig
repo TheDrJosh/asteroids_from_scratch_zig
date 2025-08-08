@@ -4,8 +4,8 @@ const TabWriter = @import("../writers.zig").TabWriter;
 const utils = @import("../utils.zig");
 const NamespaceResolver = @import("../NamespaceResolver.zig");
 
-pub fn processRequests(tab_writer: *TabWriter(std.fs.File.Writer), interface: wayland.Interface, resolver: NamespaceResolver, allocator: std.mem.Allocator) !void {
-    const writer = tab_writer.writer();
+pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, resolver: NamespaceResolver, allocator: std.mem.Allocator) !void {
+    const writer = &tab_writer.interface;
 
     for (interface.requests.items, 0..) |request, opcode| {
         try utils.writeFormatedDocComment(
@@ -20,7 +20,7 @@ pub fn processRequests(tab_writer: *TabWriter(std.fs.File.Writer), interface: wa
 
         try writer.writeAll("pub fn ");
 
-        try utils.writeCammelCase(request.name.items, writer);
+        try utils.writeCammelCase(writer, request.name.items);
 
         try writer.writeAll("(");
 
@@ -28,7 +28,7 @@ pub fn processRequests(tab_writer: *TabWriter(std.fs.File.Writer), interface: wa
 
         try writer.writeAll("\nself: *const ");
 
-        try utils.writePascalCase(interface.name.items, writer);
+        try utils.writePascalCase(writer, interface.name.items);
 
         try writer.writeAll(",");
 
@@ -49,7 +49,7 @@ pub fn processRequests(tab_writer: *TabWriter(std.fs.File.Writer), interface: wa
             if (arg.type != .new_id) {
                 try writer.writeAll(arg.name.items);
             } else {
-                try utils.writePascalCase(arg.name.items, writer);
+                try utils.writePascalCase(writer, arg.name.items);
             }
             try writer.writeAll(": ");
 
@@ -110,9 +110,9 @@ pub fn processRequests(tab_writer: *TabWriter(std.fs.File.Writer), interface: wa
             },
             1 => {
                 if (new_ids.items[0].interface) |inter| {
-                    try utils.writePascalCase(inter.items, writer);
+                    try utils.writePascalCase(writer, inter.items);
                 } else {
-                    try utils.writePascalCase(new_ids.items[0].name.items, writer);
+                    try utils.writePascalCase(writer, new_ids.items[0].name.items);
                 }
             },
             else => {
@@ -134,7 +134,7 @@ pub fn processRequests(tab_writer: *TabWriter(std.fs.File.Writer), interface: wa
                     if (new_id.interface) |inter| {
                         try resolver.writeResolvedInterface(writer, inter.items);
                     } else {
-                        try utils.writePascalCase(new_id.name.items, writer);
+                        try utils.writePascalCase(writer, new_id.name.items);
                     }
                 }
 
@@ -166,11 +166,11 @@ pub fn processRequests(tab_writer: *TabWriter(std.fs.File.Writer), interface: wa
                     } else {
                         try writer.print("\ntypes.NewId{{ .id = {s}_id, .interface = .{{ .static = ", .{arg.name.items});
 
-                        try utils.writePascalCase(arg.name.items, writer);
+                        try utils.writePascalCase(writer, arg.name.items);
 
                         try writer.print(".interface }}, .version = {s}_version orelse ", .{arg.name.items});
 
-                        try utils.writePascalCase(arg.name.items, writer);
+                        try utils.writePascalCase(writer, arg.name.items);
 
                         try writer.writeAll(".version },");
                     }
@@ -194,9 +194,9 @@ pub fn processRequests(tab_writer: *TabWriter(std.fs.File.Writer), interface: wa
                 try writer.writeAll("\n\nreturn ");
 
                 if (new_ids.items[0].interface) |inter| {
-                    try utils.writePascalCase(inter.items, writer);
+                    try utils.writePascalCase(writer, inter.items);
                 } else {
-                    try utils.writePascalCase(new_ids.items[0].name.items, writer);
+                    try utils.writePascalCase(writer, new_ids.items[0].name.items);
                 }
                 try writer.print("{{ .object_id = {s}_id, .runtime = self.runtime }};", .{new_ids.items[0].name.items});
             },
@@ -207,9 +207,9 @@ pub fn processRequests(tab_writer: *TabWriter(std.fs.File.Writer), interface: wa
                 for (new_ids.items) |new_id| {
                     try writer.print(".{s} = ", .{new_ids.items[0].name.items});
                     if (new_id.interface) |inter| {
-                        try utils.writePascalCase(inter.items, writer);
+                        try utils.writePascalCase(writer, inter.items);
                     } else {
-                        try utils.writePascalCase(new_id.name.items, writer);
+                        try utils.writePascalCase(writer, new_id.name.items);
                     }
                     try writer.print("{{ .object_id = {s}_id, .runtime = self.runtime }},", .{new_ids.items[0].name.items});
                 }

@@ -4,8 +4,8 @@ const TabWriter = @import("../writers.zig").TabWriter;
 const utils = @import("../utils.zig");
 const NamespaceResolver = @import("../NamespaceResolver.zig");
 
-pub fn processEvents(tab_writer: *TabWriter(std.fs.File.Writer), interface: wayland.Interface, resolver: NamespaceResolver, allocator: std.mem.Allocator) !void {
-    const writer = tab_writer.writer();
+pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resolver: NamespaceResolver, allocator: std.mem.Allocator) !void {
+    const writer = &tab_writer.interface;
 
     for (interface.events.items, 0..) |event, opcode| {
         try utils.writeFormatedDocComment(
@@ -20,11 +20,11 @@ pub fn processEvents(tab_writer: *TabWriter(std.fs.File.Writer), interface: wayl
 
         try writer.writeAll("pub fn next");
 
-        try utils.writePascalCase(event.name.items, writer);
+        try utils.writePascalCase(writer, event.name.items);
 
         try writer.writeAll("(self: *const ");
 
-        try utils.writePascalCase(interface.name.items, writer);
+        try utils.writePascalCase(writer, interface.name.items);
 
         try writer.writeAll(") !");
 
@@ -107,7 +107,7 @@ pub fn processEvents(tab_writer: *TabWriter(std.fs.File.Writer), interface: wayl
             try writer.print("return (try self.runtime.next(self.object_id, {}, struct {{}})) != null;", .{opcode});
         } else {
             try writer.print("return try self.runtime.next(self.object_id, {}, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next", .{opcode});
-            try utils.writePascalCase(event.name.items, writer);
+            try utils.writePascalCase(writer, event.name.items);
             try writer.writeAll(")).@\"fn\".return_type.?).error_union.payload).optional.child);");
         }
 

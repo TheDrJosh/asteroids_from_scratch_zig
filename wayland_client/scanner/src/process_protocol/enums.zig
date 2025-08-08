@@ -3,9 +3,9 @@ const wayland = @import("../wayland.zig");
 const TabWriter = @import("../writers.zig").TabWriter;
 const utils = @import("../utils.zig");
 
-pub fn processEnums(tab_writer: *TabWriter(std.fs.File.Writer), interface: wayland.Interface, allocator: std.mem.Allocator) !void {
-    const writer = tab_writer.writer();
-    
+pub fn processEnums(tab_writer: *TabWriter, interface: wayland.Interface, allocator: std.mem.Allocator) !void {
+    const writer = &tab_writer.interface;
+
     for (interface.enums.items) |@"enum"| {
         try utils.writeFormatedDocComment(
             writer,
@@ -19,7 +19,7 @@ pub fn processEnums(tab_writer: *TabWriter(std.fs.File.Writer), interface: wayla
 
         try writer.writeAll("pub const ");
 
-        try utils.writePascalCase(@"enum".name.items, writer);
+        try utils.writePascalCase(writer, @"enum".name.items);
 
         tab_writer.indent += 1;
 
@@ -84,7 +84,7 @@ pub fn processEnums(tab_writer: *TabWriter(std.fs.File.Writer), interface: wayla
                 }
                 try writer.writeAll(" = ");
 
-                try utils.writePascalCase(@"enum".name.items, writer);
+                try utils.writePascalCase(writer, @"enum".name.items);
 
                 try writer.writeAll("{ ");
 

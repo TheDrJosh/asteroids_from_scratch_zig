@@ -3,7 +3,7 @@ const writers = @import("writers.zig");
 const wayland = @import("wayland.zig");
 
 pub fn writeFormatedDocComment(
-    writer: writers.TabWriter(std.fs.File.Writer).Writer,
+    writer: *std.io.Writer,
     description: ?wayland.Description,
     alt_summary: ?std.ArrayList(u8),
     version: ?u32,
@@ -65,7 +65,7 @@ pub fn writeFormatedDocComment(
     try writeDocComment(writer, comment.items);
 }
 
-fn writeDocComment(writer: writers.TabWriter(std.fs.File.Writer).Writer, comment: []const u8) !void {
+fn writeDocComment(writer: *std.io.Writer, comment: []const u8) !void {
     if (comment.len == 0) {
         try writer.writeAll("\n");
         return;
@@ -113,7 +113,7 @@ fn writeDocComment(writer: writers.TabWriter(std.fs.File.Writer).Writer, comment
     try writer.writeByte('\n');
 }
 
-pub fn escapeIdentifier(writer: writers.TabWriter(std.fs.File.Writer).Writer, ident: []const u8) !void {
+pub fn escapeIdentifier(writer: *std.io.Writer, ident: []const u8) !void {
     if (std.ascii.isDigit(ident[0])) {
         try writer.writeAll("@\"");
         try writer.writeAll(ident);
@@ -127,7 +127,7 @@ pub fn escapeIdentifier(writer: writers.TabWriter(std.fs.File.Writer).Writer, id
     try writer.writeAll(ident);
 }
 
-pub fn writePascalCase(text: []const u8, writer: writers.TabWriter(std.fs.File.Writer).Writer) !void {
+pub fn writePascalCase(writer: *std.io.Writer, text: []const u8) !void {
     var i: usize = 0;
 
     while (i < text.len) {
@@ -144,7 +144,7 @@ pub fn writePascalCase(text: []const u8, writer: writers.TabWriter(std.fs.File.W
     }
 }
 
-pub fn writeCammelCase(text: []const u8, writer: writers.TabWriter(std.fs.File.Writer).Writer) !void {
+pub fn writeCammelCase(writer: *std.io.Writer, text: []const u8) !void {
     var i: usize = 0;
 
     while (i < text.len) {
