@@ -152,13 +152,13 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
             try writer.print("const {s}_id = self.runtime.getId();\n", .{new_id.name.items});
         }
 
-        try writer.print("\ntry self.runtime.sendRequest(self.object_id, {}, .{{", .{opcode});
+        try writer.print("try self.runtime.sendRequest(self.object_id, {}, .{{", .{opcode});
         tab_writer.indent += 1;
 
         for (request.args.items) |arg| {
             switch (arg.type) {
                 .string => {
-                    try writer.print("\ntypes.String{{.static = {s}}},", .{arg.name.items});
+                    try writer.print("\ntypes.String{{ .static = {s} }},", .{arg.name.items});
                 },
                 .new_id => {
                     if (arg.interface) |_| {
@@ -176,7 +176,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
                     }
                 },
                 .fd => {
-                    try writer.print("\ntypes.Fd{{.fd = {s}}},", .{arg.name.items});
+                    try writer.print("\ntypes.Fd{{ .fd = {s} }},", .{arg.name.items});
                 },
                 else => {
                     try writer.print("\n{s},", .{arg.name.items});
@@ -186,7 +186,11 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
 
         tab_writer.indent -= 1;
 
-        try writer.writeAll("\n});");
+        if (request.args.items.len > 0) {
+            try writer.writeAll("\n");
+        }
+
+        try writer.writeAll("});");
 
         switch (new_ids.items.len) {
             0 => {},
@@ -221,7 +225,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
 
         tab_writer.indent -= 1;
 
-        try writer.writeAll("\n}\n");
+        try writer.writeAll("\n}");
     }
 
     //TODO use request types

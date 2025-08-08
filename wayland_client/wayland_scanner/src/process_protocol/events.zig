@@ -113,6 +113,6 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
 
         tab_writer.indent -= 1;
 
-        try writer.writeAll("\n}\n");
+        try writer.writeAll("\n}");
     }
 }

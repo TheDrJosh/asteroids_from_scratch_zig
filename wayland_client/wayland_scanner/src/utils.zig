@@ -120,10 +120,6 @@ pub fn escapeIdentifier(writer: *std.io.Writer, ident: []const u8) !void {
         try writer.writeAll("\"");
         return;
     }
-    if (std.mem.eql(u8, ident, "async")) {
-        try writer.writeAll("@\"async\"");
-        return;
-    }
     try writer.writeAll(ident);
 }
 

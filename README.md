@@ -21,3 +21,15 @@ Also uses wayland_scanner to export request interface for wayland protocols.
 wayland_scanner takes in a list of wayland protocol xml definitions and outputs a generated zig file with binding to those protocols using wayland_client.
 
 Used by wayland client.
+
+### window_lib
+
+TODO
+
+### pipewire_client
+
+TODO
+
+### audio_lib
+
+TODO

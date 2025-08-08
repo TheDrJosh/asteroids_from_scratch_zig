@@ -86,7 +86,9 @@ pub fn processEnums(tab_writer: *TabWriter, interface: wayland.Interface, alloca
 
                 try utils.writePascalCase(writer, @"enum".name.items);
 
-                try writer.writeAll("{ ");
+                try writer.writeAll("{");
+
+                tab_writer.indent += 1;
 
                 const set_bits = std.bit_set.IntegerBitSet(32){
                     .mask = @as(u32, @intCast(entry.value)),
@@ -94,11 +96,17 @@ pub fn processEnums(tab_writer: *TabWriter, interface: wayland.Interface, alloca
 
                 for (0..32) |index| {
                     if (set_bits.isSet(index)) {
-                        try writer.print(".{s} = true, ", .{bits[index].?.name.items});
+                        try writer.print("\n.{s} = true,", .{bits[index].?.name.items});
                     }
                 }
 
-                try writer.writeAll("};\n");
+                tab_writer.indent -= 1;
+
+                if (set_bits.count() > 0) {
+                    try writer.writeAll("\n");
+                }
+
+                try writer.writeAll("};");
             }
         } else {
             try writer.writeAll(" = enum(u32) {");
@@ -126,6 +134,6 @@ pub fn processEnums(tab_writer: *TabWriter, interface: wayland.Interface, alloca
 
         tab_writer.indent -= 1;
 
-        try writer.writeAll("\n};\n");
+        try writer.writeAll("\n};");
     }
 }
