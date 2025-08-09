@@ -49,21 +49,6 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    const unix_domain_socket_lib_mod = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-
-    unix_domain_socket_lib_mod.addCSourceFile(.{
-        .file = b.path("src/unix_domain_socket_lib/unix_domain_socket_lib.c"),
-    });
-
-    const unix_domain_socket_lib = b.addLibrary(.{
-        .name = "unix_domain_socket_lib",
-        .root_module = unix_domain_socket_lib_mod,
-    });
-
     // This creates a "module", which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.
     // Every executable or library we compile will be based on one or more modules.
@@ -75,24 +60,22 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
-
-    lib_mod.linkLibrary(unix_domain_socket_lib);
-    lib_mod.addIncludePath(b.path("src/unix_domain_socket_lib/"));
 
     const protocol_mod = b.createModule(.{
         .root_source_file = output,
         .target = target,
         .optimize = optimize,
+        .imports = &[_]std.Build.Module.Import{
+            .{
+                .name = "wayland_client",
+                .module = lib_mod,
+            },
+        },
     });
 
-    protocol_mod.addImport("wayland_client", lib_mod);
-
     lib_mod.addImport("protocols", protocol_mod);
-
-    // lib_mod.create("protocols", .{
-    //     .root_source_file = output,
-    // });
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.

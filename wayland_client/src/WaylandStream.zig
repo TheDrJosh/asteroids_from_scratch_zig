@@ -65,7 +65,7 @@ pub fn next(self: *const WaylandStream) !?Message {
         return null;
     }
 
-    const header_len = try unix_domain_socket.recvFdsWithData(self.socket, &fds_buf, &header_buf);
+    const header_len = try unix_domain_socket.recvFdsWithData(self.socket, &fds_buf, &header_buf, self.allocator);
 
     std.debug.assert(header_len.data_received == info_len);
 
@@ -77,7 +77,7 @@ pub fn next(self: *const WaylandStream) !?Message {
     const body_buf = try self.allocator.alloc(u8, @as(usize, @intCast(@as(i32, @intCast(header.size)) - info_len)));
     errdefer self.allocator.free(body_buf);
 
-    const body_len = try unix_domain_socket.recvFdsWithData(self.socket, fds_buf[header_len.fds_received..], body_buf);
+    const body_len = try unix_domain_socket.recvFdsWithData(self.socket, fds_buf[header_len.fds_received..], body_buf, self.allocator);
 
     std.debug.assert(body_len.data_received == (header.size - info_len));
     std.debug.assert((body_len.fds_received + header_len.fds_received) < MAX_FD_RECV);
@@ -110,5 +110,5 @@ pub fn send(self: *const WaylandStream, message: Message) !void {
     std.debug.assert(try std.posix.send(self.socket, &object_id_bytes, 0) == object_id_bytes.len);
     std.debug.assert(try std.posix.send(self.socket, &header_bytes, 0) == header_bytes.len);
 
-    try unix_domain_socket.sendFdsWithData(self.socket, message.fd_list, message.data);
+    try unix_domain_socket.sendFdsWithData(self.socket, message.fd_list, message.data, self.allocator);
 }

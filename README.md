@@ -24,6 +24,10 @@ Used by wayland client.
 
 ### window_lib
 
+A high level window 
+
+### render_lib
+
 TODO
 
 ### pipewire_client

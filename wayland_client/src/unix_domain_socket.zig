@@ -1,5 +1,4 @@
 const std = @import("std");
-const c = @cImport(@cInclude("unix_domain_socket_lib.h"));
 
 /// Create a Unix domain socket
 pub fn createUnixSocket() !std.posix.socket_t {
@@ -32,7 +31,7 @@ pub fn connectUnixSocket(sockfd: std.posix.socket_t, path: []const u8) !void {
     };
 }
 
-pub fn sendFdsWithData(socket_fd: std.posix.socket_t, fds_to_send: []const std.posix.fd_t, data: []const u8) !void {
+pub fn sendFdsWithData(socket_fd: std.posix.socket_t, fds_to_send: []const std.posix.fd_t, data: []const u8, allocator: std.mem.Allocator) !void {
     if (data.len == 0) {
         if (fds_to_send.len != 0) {
             std.debug.panic("unable to send fds without data", .{});
@@ -40,20 +39,41 @@ pub fn sendFdsWithData(socket_fd: std.posix.socket_t, fds_to_send: []const std.p
         return;
     }
 
-    switch (c.send_fds_with_data(socket_fd, @constCast(fds_to_send.ptr), fds_to_send.len, @constCast(data.ptr), data.len)) {
-        0 => {},
-        -1 => {
-            std.debug.print("err: {}\n", .{@as(std.c.E, @enumFromInt(std.c._errno().*))});
-            return error.sendmsg;
-        },
-        else => unreachable,
+    var cmsgbuf = try allocator.alignedAlloc(u8, std.mem.Alignment.of(cmsghdr), cmsg_space(@sizeOf(std.posix.fd_t) * fds_to_send.len));
+    defer allocator.free(cmsgbuf);
+
+    var cmsg: *cmsghdr = @ptrCast(cmsgbuf.ptr);
+
+    if (fds_to_send.len > 0) {
+        cmsg.level = std.posix.SOL.SOCKET;
+        cmsg.type = SCM_RIGHTS;
+        cmsg.len = @intCast(cmsg_len(@sizeOf(std.posix.fd_t) * fds_to_send.len));
+
+        var fds = std.mem.bytesAsSlice(std.posix.fd_t, cmsgbuf[@sizeOf(cmsghdr)..]);
+        @memcpy(fds[0..fds_to_send.len], fds_to_send);
     }
+
+    const n = try std.posix.sendmsg(socket_fd, &std.posix.msghdr_const{
+        .name = null,
+        .namelen = 0,
+        .iov = &[1]std.posix.iovec_const{std.posix.iovec_const{
+            .base = data.ptr,
+            .len = data.len,
+        }},
+        .iovlen = 1,
+        .control = if (fds_to_send.len > 0) cmsgbuf.ptr else null,
+        .controllen = if (fds_to_send.len > 0) cmsgbuf.len else 0,
+        .flags = 0,
+    }, 0);
+
+    std.debug.assert(n == data.len);
 }
 
 pub fn recvFdsWithData(
     socket_fd: std.posix.socket_t,
     received_fds: []std.posix.fd_t,
     data_buf: []u8,
+    allocator: std.mem.Allocator,
 ) !struct { fds_received: usize, data_received: usize } {
     if (data_buf.len == 0) {
         return .{
@@ -62,20 +82,95 @@ pub fn recvFdsWithData(
         };
     }
 
-    var data_received: usize = 0;
-    switch (c.recv_fds_with_data(socket_fd, received_fds.ptr, received_fds.len, data_buf.ptr, data_buf.len, &data_received)) {
-        -1 => {
-            std.debug.print("err: {}\n", .{@as(std.c.E, @enumFromInt(std.c._errno().*))});
+    var iov = [1]std.posix.iovec{std.posix.iovec{
+        .base = data_buf.ptr,
+        .len = data_buf.len,
+    }};
 
-            return error.recvmsg;
-        },
-        -2 => return error.received_more_fds_than_expected,
-        std.math.minInt(c_int)...-3 => unreachable,
-        else => |fds_received| {
+    var cmsgbuf = try allocator.alignedAlloc(u8, std.mem.Alignment.of(cmsghdr), cmsg_space(@sizeOf(std.posix.fd_t) * received_fds.len));
+    defer allocator.free(cmsgbuf);
+
+    var msg = std.posix.msghdr{
+        .name = null,
+        .namelen = 0,
+        .iov = &iov,
+        .iovlen = 1,
+        .control = cmsgbuf.ptr,
+        .controllen = cmsgbuf.len,
+        .flags = 0,
+    };
+
+    const n = try recvmsg(socket_fd, &msg, 0);
+
+    if (msg.control) |ctl| {
+        const cmsg: *const cmsghdr = @ptrCast(&ctl);
+        if (cmsg.level == std.posix.SOL.SOCKET and cmsg.type == SCM_RIGHTS) {
+            const num_fds = (cmsg.len - cmsg_len(0)) / @sizeOf(std.posix.fd_t);
+
+            const fds = std.mem.bytesAsSlice(std.posix.fd_t, cmsgbuf[@sizeOf(cmsghdr)..]);
+
+            @memcpy(received_fds[0..num_fds], fds);
+
             return .{
-                .data_received = data_received,
-                .fds_received = @intCast(fds_received),
+                .data_received = n,
+                .fds_received = num_fds,
             };
-        },
+        }
     }
+
+    return .{
+        .data_received = n,
+        .fds_received = 0,
+    };
+}
+
+// From https://github.com/ziglang/zig/pull/24603 until this gets merged
+pub const RecvMsgError = error{
+    InputOutput,
+} || std.posix.RecvFromError;
+
+pub fn recvmsg(sockfd: std.posix.socket_t, msg: *std.posix.msghdr, flags: u32) RecvMsgError!usize {
+    while (true) {
+        const rc = std.posix.system.recvmsg(sockfd, msg, flags);
+        switch (std.posix.errno(rc)) {
+            .SUCCESS => return @intCast(rc),
+
+            .AGAIN => return error.WouldBlock,
+            .CONNREFUSED => return error.ConnectionRefused,
+            .CONNRESET => return error.ConnectionResetByPeer,
+            .IO => return error.InputOutput,
+            .MSGSIZE => return error.MessageTooBig,
+            .NOBUFS => return error.SystemResources,
+            .NOMEM => return error.SystemResources,
+            .NOTCONN => return error.SocketNotConnected,
+            .TIMEDOUT => return error.ConnectionTimedOut,
+            .INTR => continue,
+            .BADF => unreachable,
+            .FAULT => unreachable,
+            .INVAL => unreachable,
+            .NOTSOCK => unreachable, // the socket descriptor does not refer to a socket
+            .OPNOTSUPP => unreachable, // Some bit in the flags argument is inappropriate for the socket type.
+            else => |err| return std.posix.unexpectedErrno(err),
+        }
+    }
+}
+
+const SCM_RIGHTS: i32 = 1;
+
+const cmsghdr = extern struct {
+    len: usize, // TODO: This size is different on different OS'
+    level: i32,
+    type: i32,
+};
+
+inline fn cmsg_align(size: usize) usize {
+    return std.mem.alignForward(usize, size, @sizeOf(usize));
+}
+
+inline fn cmsg_space(size: usize) usize {
+    return cmsg_align(@sizeOf(cmsghdr)) + cmsg_align(size);
+}
+
+inline fn cmsg_len(size: usize) usize {
+    return cmsg_align(@sizeOf(cmsghdr)) + size;
 }
