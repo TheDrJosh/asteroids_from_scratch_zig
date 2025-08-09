@@ -20,14 +20,8 @@ pub fn deinit(self: *NamespaceResolver) void {
     var iter = self.protocols.iterator();
 
     while (iter.next()) |p| {
-        var iter2 = p.value_ptr.interfaces.iterator();
-
-        while (iter2.next()) |i| {
-            for (i.value_ptr.enums.items) |e| {
-                e.name.deinit();
-            }
-
-            i.value_ptr.enums.deinit();
+        for (p.value_ptr.interfaces.items) |i| {
+            i.name.deinit();
         }
         p.value_ptr.interfaces.deinit();
     }
@@ -37,44 +31,31 @@ pub fn deinit(self: *NamespaceResolver) void {
 
 pub fn registerProtocol(self: *NamespaceResolver, protocol: wayland.Protocol) !void {
     try self.protocols.put(protocol.name.items, Protocol{
-        .interfaces = std.StringArrayHashMap(Interface).init(self.allocator),
+        .interfaces = std.ArrayList(Interface).init(self.allocator),
     });
 
     const protocol_ptr = self.protocols.getPtr(protocol.name.items).?;
 
     for (protocol.interfaces.items) |interface| {
-        try protocol_ptr.interfaces.put(interface.name.items, Interface{
-            .enums = std.ArrayList(Enum).init(self.allocator),
+        var name = try std.ArrayList(u8).initCapacity(self.allocator, interface.name.items.len);
+        name.appendSliceAssumeCapacity(interface.name.items);
+
+        try protocol_ptr.interfaces.append(Interface{
+            .name = name,
         });
-
-        const interface_ptr = protocol_ptr.interfaces.getPtr(interface.name.items).?;
-
-        for (interface_ptr.enums.items) |@"enum"| {
-            var e = Enum{
-                .name = try std.ArrayList(u8).initCapacity(self.allocator, @"enum".name.items.len),
-            };
-            errdefer e.name.deinit();
-            try e.name.appendSlice(@"enum".name.items);
-
-            try interface_ptr.enums.append(e);
-        }
     }
 }
 
 pub fn writeResolvedInterface(
     self: *const NamespaceResolver,
     writer: *std.io.Writer,
-    // current_protocol: []const u8,
     name: []const u8,
 ) !void {
     var iter = self.protocols.iterator();
 
     l: while (iter.next()) |proto| {
-        // if (std.mem.eql(u8, proto.key_ptr, current_protocol)) {
-        //     continue;
-        // }
-        for (proto.value_ptr.interfaces.keys()) |interface| {
-            if (std.mem.eql(u8, interface, name)) {
+        for (proto.value_ptr.interfaces.items) |interface| {
+            if (std.mem.eql(u8, interface.name.items, name)) {
                 try writer.writeAll(proto.key_ptr.*);
                 try writer.writeByte('.');
                 break :l;
@@ -100,13 +81,9 @@ pub fn writeResolvedEnum(
 }
 
 const Protocol = struct {
-    interfaces: std.StringArrayHashMap(Interface),
+    interfaces: std.ArrayList(Interface),
 };
 
 const Interface = struct {
-    enums: std.ArrayList(Enum),
-};
-
-const Enum = struct {
     name: std.ArrayList(u8),
 };

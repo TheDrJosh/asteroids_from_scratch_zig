@@ -69,7 +69,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
                     }
                 },
                 .fixed => {
-                    try writer.writeAll("types.Fixed");
+                    try writer.writeAll("wayland_client.types.Fixed");
                 },
                 .string => {
                     try writer.writeAll("[]const u8");
@@ -82,7 +82,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
                     if (arg.interface) |inter| {
                         try resolver.writeResolvedInterface(writer, inter.items);
                     } else {
-                        try writer.writeAll("types.ObjectId");
+                        try writer.writeAll("wayland_client.types.ObjectId");
                     }
                 },
                 .new_id => {
@@ -158,13 +158,13 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
         for (request.args.items) |arg| {
             switch (arg.type) {
                 .string => {
-                    try writer.print("\ntypes.String{{ .static = {s} }},", .{arg.name.items});
+                    try writer.print("\nwayland_client.types.String{{ .static = {s} }},", .{arg.name.items});
                 },
                 .new_id => {
                     if (arg.interface) |_| {
                         try writer.print("\n{s}_id,", .{arg.name.items});
                     } else {
-                        try writer.print("\ntypes.NewId{{ .id = {s}_id, .interface = .{{ .static = ", .{arg.name.items});
+                        try writer.print("\nwayland_client.types.NewId{{ .id = {s}_id, .interface = .{{ .static = ", .{arg.name.items});
 
                         try utils.writePascalCase(writer, arg.name.items);
 
@@ -176,7 +176,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
                     }
                 },
                 .fd => {
-                    try writer.print("\ntypes.Fd{{ .fd = {s} }},", .{arg.name.items});
+                    try writer.print("\nwayland_client.types.Fd{{ .fd = {s} }},", .{arg.name.items});
                 },
                 else => {
                     try writer.print("\n{s},", .{arg.name.items});

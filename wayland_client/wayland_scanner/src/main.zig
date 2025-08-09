@@ -28,8 +28,6 @@ pub fn main() !void {
     try output_file_writer.writeAll(
         \\const std = @import("std");
         \\const wayland_client = @import("wayland_client");
-        \\const WaylandRuntime = wayland_client.WaylandRuntime;
-        \\const types = wayland_client.types;
         \\
     );
 

@@ -48,7 +48,7 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: *std.io.W
         try writer.writeAll(interface.name.items);
         try writer.print("\";\npub const version = {};\n", .{interface.version});
 
-        try writer.writeAll("\nobject_id: types.ObjectId,\nruntime: *WaylandRuntime,\n");
+        try writer.writeAll("\nobject_id: wayland_client.types.ObjectId,\nruntime: *wayland_client.WaylandRuntime,\n");
 
         try process_enums.processEnums(&tab_writer, interface, allocator);
 

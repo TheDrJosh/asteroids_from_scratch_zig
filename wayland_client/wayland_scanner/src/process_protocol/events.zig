@@ -53,10 +53,10 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
                     }
                 },
                 .fixed => {
-                    try writer.writeAll("types.Fixed");
+                    try writer.writeAll("wayland_client.types.Fixed");
                 },
                 .string => {
-                    try writer.writeAll("types.String");
+                    try writer.writeAll("wayland_client.types.String");
                 },
                 .object => {
                     if (arg.allow_null) {
@@ -66,21 +66,21 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
                     if (arg.interface) |inter| {
                         try resolver.writeResolvedInterface(writer, inter.items);
                     } else {
-                        try writer.writeAll("types.ObjectId");
+                        try writer.writeAll("wayland_client.types.ObjectId");
                     }
                 },
                 .new_id => {
                     if (arg.interface) |inter| {
                         try resolver.writeResolvedInterface(writer, inter.items);
                     } else {
-                        try writer.writeAll("types.ObjectId");
+                        try writer.writeAll("wayland_client.types.ObjectId");
                     }
                 },
                 .array => {
                     try writer.writeAll("std.Arraylist(u8)");
                 },
                 .fd => {
-                    try writer.writeAll("types.Fd");
+                    try writer.writeAll("wayland_client.types.Fd");
                 },
             }
             try writer.writeAll(",");
@@ -127,7 +127,7 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
 
         try writer.writeAll("return (try self.runtime.next(&[1]type{");
         try utils.writePascalCase(writer, event.name.items);
-        try writer.writeAll("Event}, [1]types.ObjectId{self.object_id})");
+        try writer.writeAll("Event}, [1]wayland_client.types.ObjectId{self.object_id})");
 
         if (event.args.items.len == 0) {
             try writer.writeAll(") != null;");
