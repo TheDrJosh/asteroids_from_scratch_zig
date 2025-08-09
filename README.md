@@ -24,7 +24,7 @@ Used by wayland client.
 
 ### window_lib
 
-A high level window 
+A high level window managment library. Uses wayland_client.
 
 ### render_lib
 
