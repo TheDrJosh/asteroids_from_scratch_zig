@@ -18,6 +18,91 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
             allocator,
         );
 
+        try writer.writeAll("pub const ");
+        try utils.writePascalCase(writer, event.name.items);
+        try writer.writeAll("Event = ");
+
+        tab_writer.indent += 1;
+        try writer.writeAll("struct {");
+
+        for (event.args.items) |arg| {
+            try utils.writeFormatedDocComment(
+                writer,
+                arg.description,
+                arg.summary,
+                null,
+                null,
+                null,
+                allocator,
+            );
+            try writer.print("{s}: ", .{arg.name.items});
+
+            switch (arg.type) {
+                .int => {
+                    if (arg.@"enum") |e| {
+                        try resolver.writeResolvedEnum(writer, e.items);
+                    } else {
+                        try writer.writeAll("i32");
+                    }
+                },
+                .uint => {
+                    if (arg.@"enum") |e| {
+                        try resolver.writeResolvedEnum(writer, e.items);
+                    } else {
+                        try writer.writeAll("u32");
+                    }
+                },
+                .fixed => {
+                    try writer.writeAll("types.Fixed");
+                },
+                .string => {
+                    try writer.writeAll("types.String");
+                },
+                .object => {
+                    if (arg.allow_null) {
+                        try writer.writeAll("?");
+                    }
+
+                    if (arg.interface) |inter| {
+                        try resolver.writeResolvedInterface(writer, inter.items);
+                    } else {
+                        try writer.writeAll("types.ObjectId");
+                    }
+                },
+                .new_id => {
+                    if (arg.interface) |inter| {
+                        try resolver.writeResolvedInterface(writer, inter.items);
+                    } else {
+                        try writer.writeAll("types.ObjectId");
+                    }
+                },
+                .array => {
+                    try writer.writeAll("std.Arraylist(u8)");
+                },
+                .fd => {
+                    try writer.writeAll("types.Fd");
+                },
+            }
+            try writer.writeAll(",");
+        }
+
+        try writer.print("\npub const opcode = {};", .{opcode});
+
+        tab_writer.indent -= 1;
+        try writer.writeAll("\n};");
+
+        try writer.flush();
+
+        try utils.writeFormatedDocComment(
+            writer,
+            event.description,
+            null,
+            null,
+            event.since,
+            event.deprecated_since,
+            allocator,
+        );
+
         try writer.writeAll("pub fn next");
 
         try utils.writePascalCase(writer, event.name.items);
@@ -31,84 +116,23 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
         if (event.args.items.len == 0) {
             try writer.writeAll("bool");
         } else {
-            tab_writer.indent += 1;
-            try writer.writeAll("?struct {");
-
-            for (event.args.items) |arg| {
-                try utils.writeFormatedDocComment(
-                    writer,
-                    arg.description,
-                    arg.summary,
-                    null,
-                    null,
-                    null,
-                    allocator,
-                );
-                try writer.print("{s}: ", .{arg.name.items});
-
-                switch (arg.type) {
-                    .int => {
-                        if (arg.@"enum") |e| {
-                            try resolver.writeResolvedEnum(writer, e.items);
-                        } else {
-                            try writer.writeAll("i32");
-                        }
-                    },
-                    .uint => {
-                        if (arg.@"enum") |e| {
-                            try resolver.writeResolvedEnum(writer, e.items);
-                        } else {
-                            try writer.writeAll("u32");
-                        }
-                    },
-                    .fixed => {
-                        try writer.writeAll("types.Fixed");
-                    },
-                    .string => {
-                        try writer.writeAll("types.String");
-                    },
-                    .object => {
-                        if (arg.allow_null) {
-                            try writer.writeAll("?");
-                        }
-
-                        if (arg.interface) |inter| {
-                            try resolver.writeResolvedInterface(writer, inter.items);
-                        } else {
-                            try writer.writeAll("types.ObjectId");
-                        }
-                    },
-                    .new_id => {
-                        if (arg.interface) |inter| {
-                            try resolver.writeResolvedInterface(writer, inter.items);
-                        } else {
-                            try writer.writeAll("types.ObjectId");
-                        }
-                    },
-                    .array => {
-                        try writer.writeAll("std.Arraylist(u8)");
-                    },
-                    .fd => {
-                        try writer.writeAll("types.Fd");
-                    },
-                }
-                try writer.writeAll(",");
-            }
-
-            tab_writer.indent -= 1;
-            try writer.writeAll("\n}");
+            try writer.writeAll("?");
+            try utils.writePascalCase(writer, event.name.items);
+            try writer.writeAll("Event");
         }
 
         tab_writer.indent += 1;
 
         try writer.writeAll(" {\n");
 
+        try writer.writeAll("return (try self.runtime.next(&[1]type{");
+        try utils.writePascalCase(writer, event.name.items);
+        try writer.writeAll("Event}, [1]types.ObjectId{self.object_id})");
+
         if (event.args.items.len == 0) {
-            try writer.print("return (try self.runtime.next(self.object_id, {}, struct {{}})) != null;", .{opcode});
+            try writer.writeAll(") != null;");
         } else {
-            try writer.print("return try self.runtime.next(self.object_id, {}, @typeInfo(@typeInfo(@typeInfo(@TypeOf(next", .{opcode});
-            try utils.writePascalCase(writer, event.name.items);
-            try writer.writeAll(")).@\"fn\".return_type.?).error_union.payload).optional.child);");
+            try writer.writeAll(" orelse return null).@\"0\";");
         }
 
         tab_writer.indent -= 1;

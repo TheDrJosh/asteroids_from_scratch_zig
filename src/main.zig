@@ -31,21 +31,30 @@ const GlobalManager = struct {
     }
 
     pub fn bind(self: *GlobalManager, T: type) !?T {
-        while (try self.registry.nextGlobal()) |global| {
-            try self.globals.append(.{
-                .name = global.name,
-                .version = global.version,
-                .interface = global.interface,
-            });
-            // std.debug.print("Global(name: {}, interface: {s}, version: {})\n", .{ global.name, global.interface.data(), global.version });
-        }
-
-        while (try self.registry.nextGlobalRemove()) |global| {
-            for (0..self.globals.items.len) |i| {
-                if (self.globals.items[i].name == global.name) {
-                    self.globals.swapRemove(i).interface.deinit();
-                    break;
-                }
+        while (try self.registry.runtime.next(&[_]type{
+            protocols.wayland.WlRegistry.GlobalEvent,
+            protocols.wayland.WlRegistry.GlobalRemoveEvent,
+        }, [2]wayland_client.types.ObjectId{
+            self.registry.object_id,
+            self.registry.object_id,
+        })) |e| {
+            switch (e) {
+                .@"0" => |global_event| {
+                    try self.globals.append(.{
+                        .name = global_event.name,
+                        .version = global_event.version,
+                        .interface = global_event.interface,
+                    });
+                    // std.debug.print("Global(name: {}, interface: {s}, version: {})\n", .{ global.name, global.interface.data(), global.version });
+                },
+                .@"1" => |global_remove_event| {
+                    for (0..self.globals.items.len) |i| {
+                        if (self.globals.items[i].name == global_remove_event.name) {
+                            self.globals.swapRemove(i).interface.deinit();
+                            break;
+                        }
+                    }
+                },
             }
         }
 

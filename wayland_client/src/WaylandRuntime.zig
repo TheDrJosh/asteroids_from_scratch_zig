@@ -23,6 +23,7 @@ allocator: std.mem.Allocator,
 event_buffer: std.ArrayList(Message),
 reuse_ids: std.PriorityQueue(types.ObjectId, void, lessThan),
 next_id: types.ObjectId,
+pause_incoming: bool,
 
 pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
     return WaylandRuntime{
@@ -31,6 +32,7 @@ pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
         .event_buffer = std.ArrayList(Message).init(allocator),
         .reuse_ids = std.PriorityQueue(types.ObjectId, void, lessThan).init(allocator, {}),
         .next_id = 2,
+        .pause_incoming = false,
     };
 }
 
@@ -154,39 +156,102 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
     });
 }
 
-pub fn next(self: *WaylandRuntime, object: types.ObjectId, opcode: u16, Args: type) !?Args {
+fn EventsUnion(comptime events: []const type) type {
+    var e_fields: []const std.builtin.Type.EnumField = &[0]std.builtin.Type.EnumField{};
+
+    for (0..events.len) |i| {
+        e_fields = e_fields ++ &[1]std.builtin.Type.EnumField{
+            .{
+                .name = std.fmt.comptimePrint("{}", .{i}),
+                .value = i,
+            },
+        };
+    }
+
+    const E = @Type(std.builtin.Type{
+        .@"enum" = .{
+            .decls = &[0]std.builtin.Type.Declaration{},
+            .is_exhaustive = true,
+            .tag_type = usize,
+            .fields = e_fields,
+        },
+    });
+
+    var u_fields: []const std.builtin.Type.UnionField = &[0]std.builtin.Type.UnionField{};
+
+    for (0..events.len) |i| {
+        u_fields = u_fields ++ &[1]std.builtin.Type.UnionField{
+            .{
+                .name = std.fmt.comptimePrint("{}", .{i}),
+                .type = events[i],
+                .alignment = @alignOf(events[i]),
+            },
+        };
+    }
+
+    const U = @Type(std.builtin.Type{
+        .@"union" = .{
+            .decls = &[0]std.builtin.Type.Declaration{},
+            .layout = .auto,
+            .tag_type = E,
+            .fields = u_fields,
+        },
+    });
+
+    return U;
+}
+
+pub fn next(self: *WaylandRuntime, comptime events: []const type, object_ids: [events.len]types.ObjectId) !?EventsUnion(events) {
     for (0..self.event_buffer.items.len) |i| {
-        if (self.event_buffer.items[i].info.object == object and self.event_buffer.items[i].info.opcode == opcode) {
-            const msg = self.event_buffer.orderedRemove(i);
-            defer msg.deinit();
-            return (try msg.parse(Args)).args;
+        inline for (0..events.len) |j| {
+            if (self.event_buffer.items[i].info.object == object_ids[j] and self.event_buffer.items[i].info.opcode == events[j].opcode) {
+                const msg = self.event_buffer.orderedRemove(i);
+                defer msg.deinit();
+
+                const arg = try msg.parse(events[j]);
+
+                return @unionInit(
+                    EventsUnion(events),
+                    std.fmt.comptimePrint("{}", .{j}),
+                    arg.args,
+                );
+            }
         }
     }
 
-    while (try self.stream.next()) |msg| {
-        if (msg.info.object == 1) {
-            defer msg.deinit();
-            switch (msg.info.opcode) {
-                0 => {
-                    const parsed_msg = try msg.parse(struct { object_id: types.ObjectId, code: u32, message: types.String });
-                    defer parsed_msg.args.message.deinit();
-
-                    std.debug.panic("Wayland Error recived on object({}), code({}). {s}\n", .{ parsed_msg.args.object_id, parsed_msg.args.code, parsed_msg.args.message.data() });
-                },
-                1 => {
-                    const parsed_msg = try msg.parse(struct { id: u32 });
-
-                    try self.reuse_ids.add(parsed_msg.args.id);
-                },
-                else => {
-                    return error.unexpected_opcode_from_wl_display;
-                },
-            }
-        } else {
-            if (msg.info.object == object and msg.info.opcode == opcode) {
+    if (!self.pause_incoming) {
+        while (try self.stream.next()) |msg| {
+            if (msg.info.object == 1) {
                 defer msg.deinit();
-                return (try msg.parse(Args)).args;
+                switch (msg.info.opcode) {
+                    0 => {
+                        const parsed_msg = try msg.parse(struct { object_id: types.ObjectId, code: u32, message: types.String });
+                        defer parsed_msg.args.message.deinit();
+
+                        std.debug.panic("Wayland Error recived on object({}), code({}). {s}\n", .{ parsed_msg.args.object_id, parsed_msg.args.code, parsed_msg.args.message.data() });
+                    },
+                    1 => {
+                        const parsed_msg = try msg.parse(struct { id: u32 });
+
+                        try self.reuse_ids.add(parsed_msg.args.id);
+                    },
+                    else => {},
+                }
             } else {
+                inline for (0..events.len) |j| {
+                    if (msg.info.object == object_ids[j] and msg.info.opcode == events[j].opcode) {
+                        defer msg.deinit();
+
+                        const arg = try msg.parse(events[j]);
+
+                        return @unionInit(
+                            EventsUnion(events),
+                            std.fmt.comptimePrint("{d}", .{j}),
+                            arg.args,
+                        );
+                    }
+                }
+
                 try self.event_buffer.append(msg);
             }
         }
