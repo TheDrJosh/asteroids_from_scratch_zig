@@ -201,7 +201,11 @@ fn EventsUnion(comptime events: []const type) type {
     return U;
 }
 
-pub fn next(self: *WaylandRuntime, comptime events: []const type, object_ids: [events.len]types.ObjectId) !?EventsUnion(events) {
+pub fn next(
+    self: *WaylandRuntime,
+    comptime events: []const type,
+    object_ids: [events.len]types.ObjectId,
+) !?EventsUnion(events) {
     for (0..self.event_buffer.items.len) |i| {
         inline for (0..events.len) |j| {
             if (self.event_buffer.items[i].info.object == object_ids[j] and self.event_buffer.items[i].info.opcode == events[j].opcode) {

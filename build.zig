@@ -15,21 +15,12 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const wayland_client_dep = b.dependency("wayland_client", .{
+    const window_lib_dep = b.dependency("window_lib", .{
         .target = target,
         .optimize = optimize,
-        .protocol_paths = @as([]const std.Build.LazyPath, &[_]std.Build.LazyPath{
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/unstable/idle-inhibit/idle-inhibit-unstable-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/tearing-control/tearing-control-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/content-type/content-type-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/xdg-system-bell/xdg-system-bell-v1.xml" },
-        }),
     });
 
-    const wayland_client = wayland_client_dep.module("wayland_client");
+    const window_lib = window_lib_dep.module("window_lib");
 
     // We will also create a module for our other entry point, 'main.zig'.
     const exe_mod = b.createModule(.{
@@ -42,7 +33,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    exe_mod.addImport("wayland_client", wayland_client);
+    exe_mod.addImport("window_lib", window_lib);
 
     // This creates another `std.Build.Step.Compile`, but this one builds an executable
     // rather than a static library.

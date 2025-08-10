@@ -36,8 +36,8 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
-        .wayland_client = .{
-            .path = "./wayland_client",
+        .window_lib = .{
+            .path = "./window_lib",
         },
     },
     .paths = .{

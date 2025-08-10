@@ -228,5 +228,35 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
         try writer.writeAll("\n}");
     }
 
-    //TODO use request types
+    var has_destructor = false;
+    for (interface.requests.items) |request| {
+        if (request.type) |t| {
+            if (std.mem.eql(u8, t.items, "destructor")) {
+                has_destructor = true;
+                break;
+            }
+        }
+    }
+
+    if (has_destructor) {
+        try writer.writeAll("\npub fn deinit(self: *const ");
+        try utils.writePascalCase(writer, interface.name.items);
+        try writer.writeAll(") void {");
+        tab_writer.indent += 1;
+
+        for (interface.requests.items) |request| {
+            if (request.type) |t| {
+                if (std.mem.eql(u8, t.items, "destructor")) {
+                    try writer.writeAll("\n_ = self.");
+                    try utils.writeCammelCase(writer, request.name.items);
+                    try writer.writeAll("() catch std.debug.panic(\"The destructor \\\"");
+                    try utils.writeCammelCase(writer, request.name.items);
+                    try writer.writeAll("\\\" on object {d} errored.\", .{self.object_id});");
+                }
+            }
+        }
+        tab_writer.indent -= 1;
+
+        try writer.writeAll("\n}");
+    }
 }
