@@ -2,7 +2,11 @@ const std = @import("std");
 
 /// Create a Unix domain socket
 pub fn createUnixSocket() !std.posix.socket_t {
-    return std.posix.socket(std.posix.AF.UNIX, std.posix.SOCK.STREAM, 0) catch |err| {
+    return std.posix.socket(
+        std.posix.AF.UNIX,
+        std.posix.SOCK.STREAM | std.posix.SOCK.NONBLOCK,
+        0,
+    ) catch |err| {
         std.debug.print("Failed to create socket: {}\n", .{err});
         return error.SocketCreationFailed;
     };
@@ -62,7 +66,7 @@ pub fn sendFdsWithData(socket_fd: std.posix.socket_t, fds_to_send: []const std.p
         }},
         .iovlen = 1,
         .control = if (fds_to_send.len > 0) cmsgbuf.ptr else null,
-        .controllen = if (fds_to_send.len > 0) cmsgbuf.len else 0,
+        .controllen = @intCast(if (fds_to_send.len > 0) cmsgbuf.len else 0),
         .flags = 0,
     }, 0);
 
@@ -96,7 +100,7 @@ pub fn recvFdsWithData(
         .iov = &iov,
         .iovlen = 1,
         .control = cmsgbuf.ptr,
-        .controllen = cmsgbuf.len,
+        .controllen = @intCast(cmsgbuf.len),
         .flags = 0,
     };
 
@@ -157,6 +161,7 @@ pub fn recvmsg(sockfd: std.posix.socket_t, msg: *std.posix.msghdr, flags: u32) R
 
 const SCM_RIGHTS: i32 = 1;
 
+// linux only?
 const cmsghdr = extern struct {
     len: usize, // TODO: This size is different on different OS'
     level: i32,

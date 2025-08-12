@@ -18,7 +18,7 @@ pub fn init(allocator: std.mem.Allocator) !WaylandStream {
 
     const wayland_socket_env = envs.get("WAYLAND_SOCKET");
 
-    const socket = try if (wayland_socket_env) |wayland_socket_str| std.fmt.parseInt(std.os.linux.fd_t, wayland_socket_str, 10) else blk: {
+    const socket = try if (wayland_socket_env) |wayland_socket_str| std.fmt.parseInt(std.posix.fd_t, wayland_socket_str, 10) else blk: {
         const socket = try unix_domain_socket.createUnixSocket();
         errdefer std.posix.close(socket);
         const xdg_runtime_dir_env = envs.get("XDG_RUNTIME_DIR") orelse return error.unable_to_connect_to_wayland_server;
@@ -53,19 +53,19 @@ pub fn next(self: *const WaylandStream) !?Message {
     const info_len = @sizeOf(types.ObjectId) + @sizeOf(Header);
 
     var header_buf = [1]u8{0} ** info_len;
-    var fds_buf = [1]std.os.linux.fd_t{0} ** MAX_FD_RECV;
+    var fds_buf = [1]std.posix.fd_t{0} ** MAX_FD_RECV;
 
-    var bytes_available: c_int = 0;
-
-    if (std.os.linux.ioctl(self.socket, std.os.linux.T.FIONREAD, @intFromPtr(&bytes_available)) == -1) {
-        return error.ioctl;
-    }
-
-    if (bytes_available < @sizeOf(types.ObjectId)) {
-        return null;
-    }
-
-    const header_len = try unix_domain_socket.recvFdsWithData(self.socket, &fds_buf, &header_buf, self.allocator);
+    const header_len = unix_domain_socket.recvFdsWithData(
+        self.socket,
+        &fds_buf,
+        &header_buf,
+        self.allocator,
+    ) catch |e| {
+        switch (e) {
+            error.WouldBlock => return null,
+            else => return e,
+        }
+    };
 
     std.debug.assert(header_len.data_received == info_len);
 
@@ -82,7 +82,7 @@ pub fn next(self: *const WaylandStream) !?Message {
     std.debug.assert(body_len.data_received == (header.size - info_len));
     std.debug.assert((body_len.fds_received + header_len.fds_received) < MAX_FD_RECV);
 
-    const fd_buf_alloc = try self.allocator.alloc(std.os.linux.fd_t, body_len.fds_received + header_len.fds_received);
+    const fd_buf_alloc = try self.allocator.alloc(std.posix.fd_t, body_len.fds_received + header_len.fds_received);
     errdefer self.allocator.free(fd_buf_alloc);
 
     @memcpy(fd_buf_alloc, fds_buf[0..(body_len.fds_received + header_len.fds_received)]);

@@ -9,7 +9,7 @@ const Message = @This();
 
 info: Info,
 data: []const u8,
-fd_list: []const std.os.linux.fd_t,
+fd_list: []const std.posix.fd_t,
 allocator: std.mem.Allocator,
 
 pub fn deinit(self: *const Message) void {

@@ -19,6 +19,7 @@ allocator: std.mem.Allocator,
 
 pub fn init(allocator: std.mem.Allocator) !Context {
     var runtime = try allocator.create(wayland_client.WaylandRuntime);
+    errdefer allocator.destroy(runtime);
     runtime.* = try wayland_client.WaylandRuntime.init(allocator);
     errdefer runtime.deinit();
 
@@ -54,6 +55,8 @@ pub fn deinit(self: *const Context) void {
     self.allocator.destroy(self.runtime);
 }
 
-pub fn pull(self: *Context) !void {
-    _ = self;
+pub fn keepAlive(self: *Context) !void {
+    while (try self.wm_base.nextPing()) |ping| {
+        try self.wm_base.pong(ping.serial);
+    }
 }

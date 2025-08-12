@@ -64,6 +64,8 @@ fn createShmFile(self: *SharedMemoryManager) !std.posix.fd_t {
         var buff = [1]u8{0} ** 17;
         const name = try std.fmt.bufPrintZ(&buff, "/wl_shm-{X:0>8}", .{rand});
 
+        std.debug.print("name: {s}\n", .{name});
+
         const fd = std.c.shm_open(name.ptr, @bitCast(std.c.O{
             .ACCMODE = .RDWR,
             .CREAT = true,
