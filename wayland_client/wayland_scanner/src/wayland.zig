@@ -1,5 +1,5 @@
 const std = @import("std");
-const xml_praser = @import("xml_parser");
+const xml_parser = @import("xml_parser");
 
 pub const Protocol = struct {
     name: std.ArrayList(u8),
@@ -8,18 +8,24 @@ pub const Protocol = struct {
     description: ?Description,
     interfaces: std.ArrayList(Interface),
 
-    pub fn init(node: *xml_praser.Document.Node, allocator: std.mem.Allocator) !Protocol {
+    pub fn init(allocator: std.mem.Allocator, document: xml_parser.Document) !Protocol {
+        const protocol_id = document.find(null, "protocol") orelse return error.no_protocol;
+        const protocol = document.getNode(protocol_id);
+
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
-        try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
+        try name.appendSlice(protocol.entity.getAttrib("name") orelse return error.no_name);
 
-        const copyright = try getTextFrom(node, "copyright", allocator);
+        const copyright = try getTextFrom(document, protocol_id, "copyright", allocator);
         errdefer if (copyright) |c| c.deinit();
 
-        const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
+        const description = if (document.find(protocol_id, "description")) |desc|
+            try Description.init(document, desc, allocator)
+        else
+            null;
         errdefer if (description) |d| d.deinit();
 
-        var interfaces = try processAllChildren(node, "interface", Interface, allocator);
+        var interfaces = try processAllChildren(document, protocol_id, "interface", Interface, allocator);
         errdefer {
             for (interfaces.items) |i| {
                 i.deinit();
@@ -59,17 +65,22 @@ pub const Interface = struct {
     events: std.ArrayList(Event),
     enums: std.ArrayList(Enum),
 
-    pub fn init(node: *xml_praser.Document.Node, allocator: std.mem.Allocator) !Interface {
+    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Interface {
+        const node = document.getNode(node_id).entity;
+
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
         const version = if (node.getAttrib("version")) |str| try std.fmt.parseInt(u32, str, 0) else return error.no_version;
 
-        const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
+        const description = if (document.find(node_id, "description")) |desc|
+            try Description.init(document, desc, allocator)
+        else
+            null;
         errdefer if (description) |d| d.deinit();
 
-        var requests = try processAllChildren(node, "request", Request, allocator);
+        var requests = try processAllChildren(document, node_id, "request", Request, allocator);
         errdefer {
             for (requests.items) |i| {
                 i.deinit();
@@ -77,7 +88,7 @@ pub const Interface = struct {
             requests.deinit();
         }
 
-        var events = try processAllChildren(node, "event", Event, allocator);
+        var events = try processAllChildren(document, node_id, "event", Event, allocator);
         errdefer {
             for (events.items) |i| {
                 i.deinit();
@@ -85,7 +96,7 @@ pub const Interface = struct {
             events.deinit();
         }
 
-        var enums = try processAllChildren(node, "enum", Enum, allocator);
+        var enums = try processAllChildren(document, node_id, "enum", Enum, allocator);
         errdefer {
             for (enums.items) |i| {
                 i.deinit();
@@ -136,7 +147,9 @@ pub const Request = struct {
     description: ?Description,
     args: std.ArrayList(Arg),
 
-    pub fn init(node: *xml_praser.Document.Node, allocator: std.mem.Allocator) !Request {
+    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Request {
+        const node = document.getNode(node_id).entity;
+
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
@@ -153,10 +166,13 @@ pub const Request = struct {
 
         const deprecated_since = if (node.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
+        const description = if (document.find(node_id, "description")) |desc|
+            try Description.init(document, desc, allocator)
+        else
+            null;
         errdefer if (description) |d| d.deinit();
 
-        var args = try processAllChildren(node, "arg", Arg, allocator);
+        var args = try processAllChildren(document, node_id, "arg", Arg, allocator);
         errdefer {
             for (args.items) |i| {
                 i.deinit();
@@ -199,7 +215,9 @@ pub const Event = struct {
     description: ?Description,
     args: std.ArrayList(Arg),
 
-    pub fn init(node: *xml_praser.Document.Node, allocator: std.mem.Allocator) !Event {
+    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Event {
+        const node = document.getNode(node_id).entity;
+
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
@@ -216,10 +234,13 @@ pub const Event = struct {
 
         const deprecated_since = if (node.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
+        const description = if (document.find(node_id, "description")) |desc|
+            try Description.init(document, desc, allocator)
+        else
+            null;
         errdefer if (description) |d| d.deinit();
 
-        var args = try processAllChildren(node, "arg", Arg, allocator);
+        var args = try processAllChildren(document, node_id, "arg", Arg, allocator);
         errdefer {
             for (args.items) |i| {
                 i.deinit();
@@ -261,7 +282,9 @@ pub const Enum = struct {
     description: ?Description,
     entries: std.ArrayList(Entry),
 
-    pub fn init(node: *xml_praser.Document.Node, allocator: std.mem.Allocator) !Enum {
+    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Enum {
+        const node = document.getNode(node_id).entity;
+
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
@@ -270,10 +293,13 @@ pub const Enum = struct {
 
         const bitfield = if (node.getAttrib("bitfield")) |str| std.mem.eql(u8, str, "true") else false;
 
-        const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
+        const description = if (document.find(node_id, "description")) |desc|
+            try Description.init(document, desc, allocator)
+        else
+            null;
         errdefer if (description) |d| d.deinit();
 
-        var entries = try processAllChildren(node, "entry", Entry, allocator);
+        var entries = try processAllChildren(document, node_id, "entry", Entry, allocator);
         errdefer {
             for (entries.items) |i| {
                 i.deinit();
@@ -312,7 +338,9 @@ pub const Entry = struct {
 
     description: ?Description,
 
-    pub fn init(node: *xml_praser.Document.Node, allocator: std.mem.Allocator) !Entry {
+    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Entry {
+        const node = document.getNode(node_id).entity;
+
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
@@ -338,7 +366,10 @@ pub const Entry = struct {
 
         const deprecated_since = if (node.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
+        const description = if (document.find(node_id, "description")) |desc|
+            try Description.init(document, desc, allocator)
+        else
+            null;
         errdefer if (description) |d| d.deinit();
 
         return Entry{
@@ -372,7 +403,9 @@ pub const Arg = struct {
 
     description: ?Description,
 
-    pub fn init(node: *xml_praser.Document.Node, allocator: std.mem.Allocator) !Arg {
+    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Arg {
+        const node = document.getNode(node_id).entity;
+
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
@@ -405,7 +438,10 @@ pub const Arg = struct {
         } else null;
         errdefer if (@"enum") |s| s.deinit();
 
-        const description = if (node.find("description")) |desc| try Description.init(desc, allocator) else null;
+        const description = if (document.find(node_id, "description")) |desc|
+            try Description.init(document, desc, allocator)
+        else
+            null;
         errdefer if (description) |d| d.deinit();
 
         return Arg{
@@ -441,18 +477,17 @@ pub const Description = struct {
     summary: std.ArrayList(u8),
     description: std.ArrayList(u8),
 
-    pub fn init(node: *xml_praser.Document.Node, allocator: std.mem.Allocator) !Description {
+    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Description {
+        const node = document.getNode(node_id);
+
         var summary = std.ArrayList(u8).init(allocator);
         errdefer summary.deinit();
-        try summary.appendSlice(node.getAttrib("summary") orelse return error.no_summary);
+        try summary.appendSlice(node.entity.getAttrib("summary") orelse return error.no_summary);
 
         var description = std.ArrayList(u8).init(allocator);
         errdefer description.deinit();
 
-        var iter = node.text();
-        while (iter.next()) |str| {
-            try description.appendSlice(str);
-        }
+        try description.appendSlice(try document.getText(node_id) orelse "");
 
         return Description{
             .summary = summary,
@@ -466,20 +501,16 @@ pub const Description = struct {
     }
 };
 
-fn getTextFrom(node: *xml_praser.Document.Node, name: []const u8, allocator: std.mem.Allocator) !?std.ArrayList(u8) {
-    if (node.find(name)) |n| {
-        var iter = n.text();
-        if (iter.next()) |str| {
-            var s = std.ArrayList(u8).init(allocator);
-            errdefer s.deinit();
-            try s.appendSlice(str);
-            return s;
-        }
+fn getTextFrom(document: xml_parser.Document, node: xml_parser.Node.Id, name: []const u8, allocator: std.mem.Allocator) !?std.ArrayList(u8) {
+    var s = std.ArrayList(u8).init(allocator);
+
+    if (try document.getText(document.find(node, name) orelse return null)) |str| {
+        try s.appendSlice(str);
     }
-    return null;
+    return s;
 }
 
-fn processAllChildren(node: *xml_praser.Document.Node, name: []const u8, comptime T: type, allocator: std.mem.Allocator) !std.ArrayList(T) {
+fn processAllChildren(document: xml_parser.Document, node: xml_parser.Node.Id, name: []const u8, comptime T: type, allocator: std.mem.Allocator) !std.ArrayList(T) {
     var ts = std.ArrayList(T).init(allocator);
     errdefer {
         for (ts.items) |i| {
@@ -488,11 +519,10 @@ fn processAllChildren(node: *xml_praser.Document.Node, name: []const u8, comptim
         ts.deinit();
     }
 
-    var iter = node.findAll(name, allocator);
-    defer iter.deinit();
+    var iter = document.findAll(node, name);
 
-    while (try iter.next()) |t| {
-        try ts.append(try T.init(t, allocator));
+    while (iter.next()) |t| {
+        try ts.append(try T.init(document, t, allocator));
     }
 
     return ts;

@@ -1,228 +1,261 @@
 const std = @import("std");
 
-const Node = @import("Node.zig");
-
 const Lexer = @This();
 
-current: usize,
-xml_string: []const u8,
-line: usize,
+reader: *std.Io.Reader,
 
 inside_tag: bool,
 
-prev: ?Token,
+col: usize,
+line: usize,
 
-pub fn init(xml_string: []const u8) Lexer {
+pub fn init(reader: *std.Io.Reader) Lexer {
     return .{
-        .current = 0,
-        .xml_string = xml_string,
-        .line = 1,
-
+        .reader = reader,
         .inside_tag = false,
-        .prev = null,
+
+        .col = 1,
+        .line = 1,
     };
 }
 
-pub const Token = struct {
-    pub const Type = enum {
-        string,
-        identifier,
-        text,
+pub const Token = enum {
+    string,
+    identifier,
+    text,
 
-        tag_start, // <tag
-        tag_end, // >
-        tag_close, // </tag>
-        tag_end_and_close, // />
-        equal, // =
-    };
-
-    start: usize,
-    slice: []const u8,
-    line: usize,
-
-    token_type: Type,
+    tag_start, // <tag
+    tag_end, // >
+    tag_close, // </tag>
+    tag_end_and_close, // />
+    equal, // =
 };
 
 pub const Error = error{
-    unexpected_eof,
     unexpected_character,
 };
 
-pub fn next(self: *Lexer) Error!?Token {
-    const t = try self.inner_next();
-    // if (t) |tt| {
-    //     std.debug.print("token: {}\n", .{tt.token_type});
-    // }
-    self.prev = t;
-    return t;
-}
-
-fn inner_next(self: *Lexer) Error!?Token {
-    errdefer {
-        std.debug.print("Lexer Error current: {}, line: {}", .{ self.current, self.line });
-    }
+pub fn next(self: *Lexer, token_writer: *std.Io.Writer) !Token {
+    // errdefer std.debug.print("line: {}, col: {}\n", .{ self.line, self.col });
 
     if (self.inside_tag) {
-        self.skipWhitespace();
-
-        const start = self.current;
-        const line = self.line;
-
-        switch (self.advance() orelse return null) {
-            '=' => {
-                return Token{
-                    .start = start,
-                    .line = line,
-                    .slice = self.xml_string[start..self.current],
-                    .token_type = .equal,
-                };
-            },
-            '"' => {
-                while (!((self.advance() orelse return Error.unexpected_eof) == '"' and self.xml_string[self.current - 2] != '\\')) {}
-                return Token{
-                    .start = start,
-                    .line = line,
-                    .slice = self.xml_string[start..self.current],
-                    .token_type = .string,
-                };
-            },
-            '>' => {
-                self.inside_tag = false;
-
-                return Token{
-                    .start = start,
-                    .line = line,
-                    .slice = self.xml_string[start..self.current],
-                    .token_type = .tag_end,
-                };
-            },
-            '/', '?' => {
-                if ((self.advance() orelse return Error.unexpected_eof) != '>') {
-                    return Error.unexpected_character;
-                }
-
-                self.inside_tag = false;
-
-                return Token{
-                    .start = start,
-                    .line = line,
-                    .slice = self.xml_string[start..self.current],
-                    .token_type = .tag_end_and_close,
-                };
-            },
-            else => |c| {
-                if (std.ascii.isAlphabetic(c)) {
-                    while ((std.ascii.isAlphanumeric(self.peek() orelse return Error.unexpected_eof) or self.peek() == '-' or self.peek() == '_')) {
-                        _ = self.advance();
-                    }
-
-                    return Token{
-                        .start = start,
-                        .line = line,
-                        .slice = self.xml_string[start..self.current],
-                        .token_type = .identifier,
-                    };
-                } else {
-                    return Error.unexpected_character;
-                }
-            },
-        }
+        return try self.nextTagToken(token_writer);
     } else {
-        const start = self.current;
-        const line = self.line;
-        if ((self.advance() orelse return null) == '<') {
-            const is_end = switch (self.advance() orelse 0) {
-                '/' => true,
-                '!' => {
-                    if ((self.advance() orelse return Error.unexpected_eof) != '-') {
-                        return Error.unexpected_character;
-                    }
+        return try self.nextTextSection(token_writer);
+    }
+}
 
-                    if ((self.advance() orelse return Error.unexpected_eof) != '-') {
-                        return Error.unexpected_character;
-                    }
+fn nextTagToken(self: *Lexer, token_writer: *std.Io.Writer) !Token {
+    try self.skipWhitespace();
 
-                    while (!((self.advance() orelse return null) == '>' and self.xml_string[self.current - 2] == '-' and self.xml_string[self.current - 3] == '-')) {
-                        if (self.xml_string[self.current - 1] == '\n') {
-                            self.line += 1;
-                        }
-                    }
+    switch (try self.takeByte()) {
+        '<' => {
+            try token_writer.writeByte('<');
 
-                    return try self.next();
-                },
-                else => false,
-            };
+            const is_end =
+                if (try self.reader.peekByte() == '/') blk: {
+                    try token_writer.writeByte('/');
+                    self.toss(1);
+                    break :blk true;
+                } else false;
 
-            while (std.ascii.isAlphanumeric(self.peek() orelse 0)) {
-                _ = self.advance();
+            if (try self.reader.peekByte() == '?') {
+                try token_writer.writeByte('?');
+                self.toss(1);
+            }
+
+            while (std.ascii.isAlphanumeric(try self.reader.peekByte()) or
+                (try self.reader.peekByte() == '-') or
+                (try self.reader.peekByte() == '_'))
+            {
+                try token_writer.writeByte(try self.reader.peekByte());
+                self.toss(1);
             }
 
             if (is_end) {
-                if ((self.advance() orelse return Error.unexpected_eof) != '>') {
+                if (try self.takeByte() != '>') {
                     return Error.unexpected_character;
                 }
+                try token_writer.writeByte('>');
+                self.inside_tag = false;
+            }
+
+            try token_writer.flush();
+            return if (is_end) Token.tag_close else Token.tag_start;
+        },
+        '=' => {
+            try token_writer.writeByte('=');
+            try token_writer.flush();
+            return Token.equal;
+        },
+        '"' => {
+            try token_writer.writeByte('"');
+
+            l: switch (true) {
+                true => {
+                    const buf = try self.takeDelimiterInclusive('"');
+
+                    self.col += buf.len;
+                    try token_writer.writeAll(buf);
+
+                    //TODO check for a odd number of back slashes not just 1
+                    if (buf.len >= 2) {
+                        if (buf[buf.len - 2] == '\\') {
+                            continue :l true;
+                        }
+                    }
+                },
+                false => {},
+            }
+
+            try token_writer.flush();
+            return Token.string;
+        },
+        '>' => {
+            try token_writer.writeByte('>');
+            self.inside_tag = false;
+
+            try token_writer.flush();
+            return Token.tag_end;
+        },
+        '/', '?' => |c| {
+            try token_writer.writeByte(c);
+
+            if (try self.takeByte() != '>') {
+                return Error.unexpected_character;
+            }
+            try token_writer.writeByte('>');
+
+            self.inside_tag = false;
+            try token_writer.flush();
+            return Token.tag_end_and_close;
+        },
+        else => |c| {
+            if (std.ascii.isAlphabetic(c)) {
+                try token_writer.writeByte(c);
+
+                while (std.ascii.isAlphanumeric(try self.reader.peekByte()) or
+                    try self.reader.peekByte() == '-' or
+                    try self.reader.peekByte() == '_')
+                {
+                    try token_writer.writeByte(try self.takeByte());
+                }
+                try token_writer.flush();
+                return Token.identifier;
             } else {
-                self.inside_tag = true;
+                std.debug.print("c: {c}\n", .{c});
+                return Error.unexpected_character;
             }
+        },
+    }
+}
 
-            return Token{
-                .start = start,
-                .line = line,
-                .slice = self.xml_string[start..self.current],
-                .token_type = if (is_end) .tag_close else .tag_start,
-            };
-        } else {
-            var all_whitespace = true;
-            while ((self.peek() orelse return null) != '<') {
-                if (all_whitespace and !std.ascii.isWhitespace(self.peek() orelse 0)) {
-                    all_whitespace = false;
+fn nextTextSection(self: *Lexer, token_writer: *std.Io.Writer) !Token {
+    l: switch (true) {
+        true => {
+            const text = try self.takeDelimiterExclusive('<');
+            self.reader.seek -= 1;
+            try token_writer.writeAll(text);
+
+            if (std.mem.eql(u8, self.reader.peek(4) catch "", "<!--")) {
+                self.toss(3);
+                while (!std.mem.eql(u8, try self.reader.peek(3), "-->")) {
+                    self.toss(1);
                 }
-                if (self.advance() == '\n') {
-                    self.line += 1;
-                }
+                self.toss(3);
+                continue :l true;
             }
-
-            if (all_whitespace) {
-                return try self.next();
-            }
-
-            return Token{
-                .start = start,
-                .line = line,
-                .slice = self.xml_string[start..self.current],
-                .token_type = .text,
-            };
-        }
+        },
+        false => {},
     }
+
+    try token_writer.flush();
+    self.inside_tag = true;
+    return Token.text;
 }
 
-fn peek(self: *const Lexer) ?u8 {
-    if (self.current >= self.xml_string.len) {
-        return null;
-    }
-    return self.xml_string[self.current];
-}
-
-fn advance(self: *Lexer) ?u8 {
-    if (self.peek() == '\n') {
-        self.line += 1;
-    }
-    if (self.current >= self.xml_string.len) {
-        return null;
-    }
-
-    self.current += 1;
-
-    return self.xml_string[self.current - 1];
-}
-
-fn skipWhitespace(self: *Lexer) void {
+fn skipWhitespace(self: *Lexer) !void {
     while (true) {
-        if (std.ascii.isWhitespace(self.peek() orelse 0)) {
-            _ = self.advance();
+        const c = try self.reader.peekByte();
+        if (std.ascii.isWhitespace(c)) {
+            self.toss(1);
         } else {
             return;
         }
+    }
+}
+
+fn toss(self: *Lexer, len: usize) void {
+    const text = self.reader.take(len) catch return;
+    for (text) |c| {
+        if (c == '\n') {
+            self.col = 1;
+            self.line += 1;
+        } else {
+            self.col += 1;
+        }
+    }
+}
+
+fn takeByte(self: *Lexer) !u8 {
+    const c = try self.reader.takeByte();
+    if (c == '\n') {
+        self.col = 1;
+        self.line += 1;
+    } else {
+        self.col += 1;
+    }
+    return c;
+}
+
+fn takeDelimiterExclusive(self: *Lexer, delimiter: u8) ![]u8 {
+    const text = try self.reader.takeDelimiterExclusive(delimiter);
+    for (text) |c| {
+        if (c == '\n') {
+            self.col = 1;
+            self.line += 1;
+        } else {
+            self.col += 1;
+        }
+    }
+    return text;
+}
+
+fn takeDelimiterInclusive(self: *Lexer, delimiter: u8) ![]u8 {
+    const text = try self.reader.takeDelimiterInclusive(delimiter);
+    for (text) |c| {
+        if (c == '\n') {
+            self.col = 1;
+            self.line += 1;
+        } else {
+            self.col += 1;
+        }
+    }
+    return text;
+}
+
+test {
+    const text =
+        \\<note>
+        \\  <to>Tove</to>
+        \\  <from>Jani</from>
+        \\  <heading>Reminder</heading>
+        \\  <body>Don't forget me this weekend!</body>
+        \\</note>
+    ;
+    var reader = std.Io.Reader.fixed(text);
+
+    var lexer = Lexer.init(&reader);
+
+    var token_contexts = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer token_contexts.deinit();
+
+    _ = try lexer.next(&token_contexts.writer);
+
+    while (lexer.next(&token_contexts.writer) catch |e| if (e == error.EndOfStream) null else return e) |_| {
+        // std.debug.print("token(col: {}, line: {}, str: {s}, type: {})\n", .{ lexer.col, lexer.line, token_contexts.getWritten(), token });
+
+        token_contexts.clearRetainingCapacity();
     }
 }
 

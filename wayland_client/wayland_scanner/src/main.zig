@@ -43,13 +43,17 @@ pub fn main() !void {
         const input_file = try std.fs.cwd().openFile(input_file_name, .{});
         defer input_file.close();
 
-        const input_file_contents = try input_file.readToEndAlloc(allocator, std.math.maxInt(usize));
-        defer allocator.free(input_file_contents);
+        // std.debug.print("file: {s}\n", .{input_file_name});
 
-        const xml = try xml_parser.Document.init(input_file_contents, allocator);
+        //TODO test diffent buffer sizes
+        var buffer: [8192]u8 = undefined;
+
+        var input_file_reader = input_file.reader(&buffer);
+
+        const xml = try xml_parser.Document.init(allocator, &input_file_reader.interface);
         defer xml.deinit();
 
-        const protocol = try wayland.Protocol.init(xml.root, allocator);
+        const protocol = try wayland.Protocol.init(allocator, xml);
         errdefer protocol.deinit();
 
         try protocols.append(protocol);
