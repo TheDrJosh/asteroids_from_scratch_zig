@@ -2,7 +2,7 @@ const std = @import("std");
 
 const Parser = @import("Parser.zig");
 const Lexer = @import("Lexer.zig");
-const Node = @import("node.zig").Node;
+const Node = @import("Node.zig");
 
 const Document = @This();
 
@@ -74,15 +74,15 @@ pub const FindAllIterator = struct {
     pub fn next(self: *FindAllIterator) ?Node.Id {
         outer: while (self.index < self.document.nodes.len) {
             defer self.index += 1;
-            switch (self.document.nodes[self.index]) {
-                .entity => |entity| {
+            switch (self.document.nodes[self.index].type) {
+                .entity => {
                     var path_iter = std.mem.splitBackwardsScalar(u8, self.path, '/');
 
                     var current: ?usize = self.index;
 
                     while (path_iter.next()) |path_part| {
-                        if (std.mem.eql(u8, self.document.nodes[current orelse continue :outer].entity.name, path_part)) {
-                            current = entity.parent;
+                        if (std.mem.eql(u8, self.document.nodes[current orelse continue :outer].type.entity.name, path_part)) {
+                            current = self.document.nodes[self.index].parent;
                         } else {
                             continue :outer;
                         }
@@ -114,19 +114,19 @@ pub fn find(self: *const Document, base_node: ?Node.Id, path: []const u8) ?Node.
 }
 
 pub fn getText(self: *const Document, node: Node.Id) !?[]const u8 {
-    switch (self.nodes[node]) {
+    switch (self.nodes[node].type) {
         .entity => {
             var text_child: ?[]const u8 = null;
 
             for (self.nodes) |n| {
-                if (n.parent() == node) {
-                    switch (n) {
+                if (n.parent == node) {
+                    switch (n.type) {
                         .entity => {
                             return error.node_has_extra_children;
                         },
                         .text => |t| {
                             if (text_child == null) {
-                                text_child = t.text;
+                                text_child = t;
                             } else {
                                 return error.node_has_extra_children;
                             }
@@ -137,7 +137,7 @@ pub fn getText(self: *const Document, node: Node.Id) !?[]const u8 {
             return text_child;
         },
         .text => |text| {
-            return text.text;
+            return text;
         },
     }
 }

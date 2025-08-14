@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const Node = @import("node.zig").Node;
+const Node = @import("Node.zig");
 
 const Lexer = @import("Lexer.zig");
 
@@ -58,12 +58,7 @@ pub fn next(self: *Parser) !Node {
             token_text.clearRetainingCapacity();
 
             var tag_info = try self.parseTagInfo();
-            errdefer {
-                for (tag_info.attribs.items) |a| {
-                    a.deinit();
-                }
-                tag_info.attribs.deinit();
-            }
+            errdefer tag_info.deinit();
 
             const parent_id = if (self.parents.getLastOrNull()) |p| p.id else null;
 
@@ -81,12 +76,14 @@ pub fn next(self: *Parser) !Node {
 
             self.current_id += 1;
 
-            return .{
-                .entity = .{
-                    .allocator = self.allocator,
-                    .attribs = try tag_info.attribs.toOwnedSlice(),
-                    .name = name,
-                    .parent = parent_id,
+            return Node{
+                .parent = parent_id,
+                .allocator = self.allocator,
+                .type = .{
+                    .entity = .{
+                        .attribs = try tag_info.attribs.toOwnedSlice(),
+                        .name = name,
+                    },
                 },
             };
         },
@@ -106,10 +103,10 @@ pub fn next(self: *Parser) !Node {
 
                     self.current_id += 1;
                     return .{
-                        .text = .{
+                        .allocator = self.allocator,
+                        .parent = parent_id,
+                        .type = .{
                             .text = try token_text.toOwnedSlice(),
-                            .allocator = self.allocator,
-                            .parent = parent_id,
                         },
                     };
                 }
@@ -122,15 +119,22 @@ pub fn next(self: *Parser) !Node {
 }
 
 const TagInfo = struct {
-    attribs: std.ArrayList(Node.Entity.Attrib),
+    attribs: std.ArrayList(Node.Type.Entity.Attrib),
     self_closed: bool,
+    pub fn deinit(self: *const TagInfo) void {
+        for (self.attribs.items) |attrib| {
+            self.attribs.allocator.free(attrib.name);
+            self.attribs.allocator.free(attrib.value);
+        }
+        self.attribs.deinit();
+    }
 };
 
 pub fn parseTagInfo(self: *Parser) !TagInfo {
     var token_text = std.Io.Writer.Allocating.init(self.allocator);
     defer token_text.deinit();
 
-    var attribs = std.ArrayList(Node.Entity.Attrib).init(self.allocator);
+    var attribs = std.ArrayList(Node.Type.Entity.Attrib).init(self.allocator);
     errdefer attribs.deinit();
 
     state: switch (try self.lexer.next(&token_text.writer)) {
@@ -164,7 +168,6 @@ pub fn parseTagInfo(self: *Parser) !TagInfo {
             try attribs.append(.{
                 .name = name,
                 .value = try text.toOwnedSlice(),
-                .allocator = self.allocator,
             });
 
             token_text.clearRetainingCapacity();
@@ -172,7 +175,6 @@ pub fn parseTagInfo(self: *Parser) !TagInfo {
             continue :state try self.lexer.next(&token_text.writer);
         },
         .tag_end => {
-            
             return TagInfo{
                 .attribs = attribs,
                 .self_closed = false,

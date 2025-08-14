@@ -14,7 +14,7 @@ pub const Protocol = struct {
 
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
-        try name.appendSlice(protocol.entity.getAttrib("name") orelse return error.no_name);
+        try name.appendSlice(protocol.type.entity.getAttrib("name") orelse return error.no_name);
 
         const copyright = try getTextFrom(document, protocol_id, "copyright", allocator);
         errdefer if (copyright) |c| c.deinit();
@@ -66,7 +66,7 @@ pub const Interface = struct {
     enums: std.ArrayList(Enum),
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Interface {
-        const node = document.getNode(node_id).entity;
+        const node = document.getNode(node_id).type.entity;
 
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
@@ -148,7 +148,7 @@ pub const Request = struct {
     args: std.ArrayList(Arg),
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Request {
-        const node = document.getNode(node_id).entity;
+        const node = document.getNode(node_id).type.entity;
 
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
@@ -216,7 +216,7 @@ pub const Event = struct {
     args: std.ArrayList(Arg),
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Event {
-        const node = document.getNode(node_id).entity;
+        const node = document.getNode(node_id).type.entity;
 
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
@@ -283,7 +283,7 @@ pub const Enum = struct {
     entries: std.ArrayList(Entry),
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Enum {
-        const node = document.getNode(node_id).entity;
+        const node = document.getNode(node_id).type.entity;
 
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
@@ -339,7 +339,7 @@ pub const Entry = struct {
     description: ?Description,
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Entry {
-        const node = document.getNode(node_id).entity;
+        const node = document.getNode(node_id).type.entity;
 
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
@@ -404,7 +404,7 @@ pub const Arg = struct {
     description: ?Description,
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Arg {
-        const node = document.getNode(node_id).entity;
+        const node = document.getNode(node_id).type.entity;
 
         var name = std.ArrayList(u8).init(allocator);
         errdefer name.deinit();
@@ -482,7 +482,7 @@ pub const Description = struct {
 
         var summary = std.ArrayList(u8).init(allocator);
         errdefer summary.deinit();
-        try summary.appendSlice(node.entity.getAttrib("summary") orelse return error.no_summary);
+        try summary.appendSlice(node.type.entity.getAttrib("summary") orelse return error.no_summary);
 
         var description = std.ArrayList(u8).init(allocator);
         errdefer description.deinit();
