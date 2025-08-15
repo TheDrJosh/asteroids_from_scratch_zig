@@ -31,7 +31,7 @@ pub fn main() !void {
         \\
     );
 
-    var protocols = std.ArrayList(wayland.Protocol).init(allocator);
+    var protocols = std.array_list.Managed(wayland.Protocol).init(allocator);
     defer {
         for (protocols.items) |protocol| {
             protocol.deinit();

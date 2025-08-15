@@ -51,7 +51,7 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
                     .dynamic = try readArray(data_reader, true, self.allocator),
                 };
             },
-            std.ArrayList(u8) => {
+            std.array_list.Managed(u8) => {
                 field.* = try readArray(data_reader, false, self.allocator);
             },
             types.Fd => {
@@ -86,12 +86,12 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
     };
 }
 
-fn readArray(reader: std.io.FixedBufferStream([]const u8).Reader, is_string: bool, allocator: std.mem.Allocator) !std.ArrayList(u8) {
+fn readArray(reader: std.io.FixedBufferStream([]const u8).Reader, is_string: bool, allocator: std.mem.Allocator) !std.array_list.Managed(u8) {
     const l = try reader.readInt(u32, native_endian);
 
     const len = if (is_string) l - 1 else l;
 
-    var arr = std.ArrayList(u8).init(allocator);
+    var arr = std.array_list.Managed(u8).init(allocator);
     for (0..len) |_| {
         try arr.append(try reader.readByte());
     }

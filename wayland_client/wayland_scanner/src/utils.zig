@@ -5,13 +5,13 @@ const wayland = @import("wayland.zig");
 pub fn writeFormatedDocComment(
     writer: *std.io.Writer,
     description: ?wayland.Description,
-    alt_summary: ?std.ArrayList(u8),
+    alt_summary: ?std.array_list.Managed(u8),
     version: ?u32,
     since: ?u32,
     deprecated_since: ?u32,
     allocator: std.mem.Allocator,
 ) !void {
-    var comment = std.ArrayList(u8).init(allocator);
+    var comment = std.array_list.Managed(u8).init(allocator);
     defer comment.deinit();
 
     if (description) |desc| {

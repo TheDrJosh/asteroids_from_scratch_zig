@@ -13,7 +13,7 @@ pub fn init(allocator: std.mem.Allocator, reader: *std.Io.Reader) !Document {
     var parser = Parser.init(allocator, reader);
     defer parser.deinit();
 
-    var nodes = std.ArrayList(Node).init(allocator);
+    var nodes = std.array_list.Managed(Node).init(allocator);
     errdefer {
         for (nodes.items) |node| {
             node.deinit();

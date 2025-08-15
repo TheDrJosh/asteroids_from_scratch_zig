@@ -77,7 +77,7 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
                     }
                 },
                 .array => {
-                    try writer.writeAll("std.ArrayList(u8)");
+                    try writer.writeAll("std.array_list.Managed(u8)");
                 },
                 .fd => {
                     try writer.writeAll("wayland_client.types.Fd");

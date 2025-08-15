@@ -112,7 +112,7 @@ pub fn processEnums(tab_writer: *TabWriter, interface: wayland.Interface, alloca
             try writer.writeAll(" = enum(u32) {");
 
             for (@"enum".entries.items) |entry| {
-                var comment = std.ArrayList(u8).init(allocator);
+                var comment = std.array_list.Managed(u8).init(allocator);
                 defer comment.deinit();
 
                 try utils.writeFormatedDocComment(

@@ -2,17 +2,17 @@ const std = @import("std");
 const xml_parser = @import("xml_parser");
 
 pub const Protocol = struct {
-    name: std.ArrayList(u8),
+    name: std.array_list.Managed(u8),
 
-    copyright: ?std.ArrayList(u8),
+    copyright: ?std.array_list.Managed(u8),
     description: ?Description,
-    interfaces: std.ArrayList(Interface),
+    interfaces: std.array_list.Managed(Interface),
 
     pub fn init(allocator: std.mem.Allocator, document: xml_parser.Document) !Protocol {
         const protocol_id = document.find(null, "protocol") orelse return error.no_protocol;
         const protocol = document.getNode(protocol_id);
 
-        var name = std.ArrayList(u8).init(allocator);
+        var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(protocol.type.entity.getAttrib("name") orelse return error.no_name);
 
@@ -57,18 +57,18 @@ pub const Protocol = struct {
 };
 
 pub const Interface = struct {
-    name: std.ArrayList(u8),
+    name: std.array_list.Managed(u8),
     version: u32,
 
     description: ?Description,
-    requests: std.ArrayList(Request),
-    events: std.ArrayList(Event),
-    enums: std.ArrayList(Enum),
+    requests: std.array_list.Managed(Request),
+    events: std.array_list.Managed(Event),
+    enums: std.array_list.Managed(Enum),
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Interface {
         const node = document.getNode(node_id).type.entity;
 
-        var name = std.ArrayList(u8).init(allocator);
+        var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
@@ -139,23 +139,23 @@ pub const Interface = struct {
 };
 
 pub const Request = struct {
-    name: std.ArrayList(u8),
-    type: ?std.ArrayList(u8),
+    name: std.array_list.Managed(u8),
+    type: ?std.array_list.Managed(u8),
     since: ?u32,
     deprecated_since: ?u32,
 
     description: ?Description,
-    args: std.ArrayList(Arg),
+    args: std.array_list.Managed(Arg),
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Request {
         const node = document.getNode(node_id).type.entity;
 
-        var name = std.ArrayList(u8).init(allocator);
+        var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
         const _type = if (node.getAttrib("type")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
+            var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
             break :blk string;
@@ -207,23 +207,23 @@ pub const Request = struct {
 };
 
 pub const Event = struct {
-    name: std.ArrayList(u8),
-    type: ?std.ArrayList(u8),
+    name: std.array_list.Managed(u8),
+    type: ?std.array_list.Managed(u8),
     since: ?u32,
     deprecated_since: ?u32,
 
     description: ?Description,
-    args: std.ArrayList(Arg),
+    args: std.array_list.Managed(Arg),
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Event {
         const node = document.getNode(node_id).type.entity;
 
-        var name = std.ArrayList(u8).init(allocator);
+        var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
         const _type = if (node.getAttrib("type")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
+            var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
             break :blk string;
@@ -275,17 +275,17 @@ pub const Event = struct {
 };
 
 pub const Enum = struct {
-    name: std.ArrayList(u8),
+    name: std.array_list.Managed(u8),
     since: ?u32,
     bitfield: bool,
 
     description: ?Description,
-    entries: std.ArrayList(Entry),
+    entries: std.array_list.Managed(Entry),
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Enum {
         const node = document.getNode(node_id).type.entity;
 
-        var name = std.ArrayList(u8).init(allocator);
+        var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
@@ -330,9 +330,9 @@ pub const Enum = struct {
 };
 
 pub const Entry = struct {
-    name: std.ArrayList(u8),
+    name: std.array_list.Managed(u8),
     value: u32,
-    summary: ?std.ArrayList(u8),
+    summary: ?std.array_list.Managed(u8),
     since: ?u32,
     deprecated_since: ?u32,
 
@@ -341,7 +341,7 @@ pub const Entry = struct {
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Entry {
         const node = document.getNode(node_id).type.entity;
 
-        var name = std.ArrayList(u8).init(allocator);
+        var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
@@ -355,7 +355,7 @@ pub const Entry = struct {
         } else return error.no_value;
 
         const summary = if (node.getAttrib("summary")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
+            var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
             break :blk string;
@@ -394,26 +394,26 @@ pub const Entry = struct {
 };
 
 pub const Arg = struct {
-    name: std.ArrayList(u8),
+    name: std.array_list.Managed(u8),
     type: Type,
-    summary: ?std.ArrayList(u8),
-    interface: ?std.ArrayList(u8),
+    summary: ?std.array_list.Managed(u8),
+    interface: ?std.array_list.Managed(u8),
     allow_null: bool,
-    @"enum": ?std.ArrayList(u8),
+    @"enum": ?std.array_list.Managed(u8),
 
     description: ?Description,
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Arg {
         const node = document.getNode(node_id).type.entity;
 
-        var name = std.ArrayList(u8).init(allocator);
+        var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
 
         const @"type" = try Type.parse(node.getAttrib("type") orelse return error.no_value);
 
         const summary = if (node.getAttrib("summary")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
+            var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
             break :blk string;
@@ -421,7 +421,7 @@ pub const Arg = struct {
         errdefer if (summary) |s| s.deinit();
 
         const interface = if (node.getAttrib("interface")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
+            var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
             break :blk string;
@@ -431,7 +431,7 @@ pub const Arg = struct {
         const allow_null = if (node.getAttrib("allow-null")) |str| std.mem.eql(u8, str, "true") else false;
 
         const @"enum" = if (node.getAttrib("enum")) |str| blk: {
-            var string = std.ArrayList(u8).init(allocator);
+            var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
             break :blk string;
@@ -474,17 +474,17 @@ pub const Arg = struct {
 };
 
 pub const Description = struct {
-    summary: std.ArrayList(u8),
-    description: std.ArrayList(u8),
+    summary: std.array_list.Managed(u8),
+    description: std.array_list.Managed(u8),
 
     pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Description {
         const node = document.getNode(node_id);
 
-        var summary = std.ArrayList(u8).init(allocator);
+        var summary = std.array_list.Managed(u8).init(allocator);
         errdefer summary.deinit();
         try summary.appendSlice(node.type.entity.getAttrib("summary") orelse return error.no_summary);
 
-        var description = std.ArrayList(u8).init(allocator);
+        var description = std.array_list.Managed(u8).init(allocator);
         errdefer description.deinit();
 
         try description.appendSlice(try document.getText(node_id) orelse "");
@@ -501,8 +501,8 @@ pub const Description = struct {
     }
 };
 
-fn getTextFrom(document: xml_parser.Document, node: xml_parser.Node.Id, name: []const u8, allocator: std.mem.Allocator) !?std.ArrayList(u8) {
-    var s = std.ArrayList(u8).init(allocator);
+fn getTextFrom(document: xml_parser.Document, node: xml_parser.Node.Id, name: []const u8, allocator: std.mem.Allocator) !?std.array_list.Managed(u8) {
+    var s = std.array_list.Managed(u8).init(allocator);
 
     if (try document.getText(document.find(node, name) orelse return null)) |str| {
         try s.appendSlice(str);
@@ -510,8 +510,8 @@ fn getTextFrom(document: xml_parser.Document, node: xml_parser.Node.Id, name: []
     return s;
 }
 
-fn processAllChildren(document: xml_parser.Document, node: xml_parser.Node.Id, name: []const u8, comptime T: type, allocator: std.mem.Allocator) !std.ArrayList(T) {
-    var ts = std.ArrayList(T).init(allocator);
+fn processAllChildren(document: xml_parser.Document, node: xml_parser.Node.Id, name: []const u8, comptime T: type, allocator: std.mem.Allocator) !std.array_list.Managed(T) {
+    var ts = std.array_list.Managed(T).init(allocator);
     errdefer {
         for (ts.items) |i| {
             i.deinit();

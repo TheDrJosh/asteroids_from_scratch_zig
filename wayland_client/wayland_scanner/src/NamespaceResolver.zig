@@ -31,13 +31,13 @@ pub fn deinit(self: *NamespaceResolver) void {
 
 pub fn registerProtocol(self: *NamespaceResolver, protocol: wayland.Protocol) !void {
     try self.protocols.put(protocol.name.items, Protocol{
-        .interfaces = std.ArrayList(Interface).init(self.allocator),
+        .interfaces = std.array_list.Managed(Interface).init(self.allocator),
     });
 
     const protocol_ptr = self.protocols.getPtr(protocol.name.items).?;
 
     for (protocol.interfaces.items) |interface| {
-        var name = try std.ArrayList(u8).initCapacity(self.allocator, interface.name.items.len);
+        var name = try std.array_list.Managed(u8).initCapacity(self.allocator, interface.name.items.len);
         name.appendSliceAssumeCapacity(interface.name.items);
 
         try protocol_ptr.interfaces.append(Interface{
@@ -81,9 +81,9 @@ pub fn writeResolvedEnum(
 }
 
 const Protocol = struct {
-    interfaces: std.ArrayList(Interface),
+    interfaces: std.array_list.Managed(Interface),
 };
 
 const Interface = struct {
-    name: std.ArrayList(u8),
+    name: std.array_list.Managed(u8),
 };

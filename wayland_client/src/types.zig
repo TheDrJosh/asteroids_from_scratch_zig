@@ -27,7 +27,7 @@ pub const Fixed = packed struct(u32) {
 };
 
 pub const String = union(enum) {
-    dynamic: std.ArrayList(u8),
+    dynamic: std.array_list.Managed(u8),
     static: []const u8,
 
     pub fn data(self: String) []const u8 {

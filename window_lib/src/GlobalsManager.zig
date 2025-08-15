@@ -5,7 +5,7 @@ const wayland_client = @import("wayland_client");
 const GlobalsManager = @This();
 
 registry: wayland_client.protocols.wayland.WlRegistry,
-globals: std.ArrayList(GlobalInfo),
+globals: std.array_list.Managed(GlobalInfo),
 
 const GlobalInfo = struct {
     name: u32,
@@ -22,7 +22,7 @@ pub fn init(runtime: *wayland_client.WaylandRuntime, allocator: std.mem.Allocato
 
     return .{
         .registry = registry,
-        .globals = std.ArrayList(GlobalInfo).init(allocator),
+        .globals = std.array_list.Managed(GlobalInfo).init(allocator),
     };
 }
 

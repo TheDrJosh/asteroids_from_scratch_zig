@@ -20,7 +20,7 @@ fn lessThan(context: void, a: types.ObjectId, b: types.ObjectId) std.math.Order 
 
 stream: WaylandStream,
 allocator: std.mem.Allocator,
-event_buffer: std.ArrayList(Message),
+event_buffer: std.array_list.Managed(Message),
 reuse_ids: std.PriorityQueue(types.ObjectId, void, lessThan),
 next_id: types.ObjectId,
 pause_incoming: bool,
@@ -29,7 +29,7 @@ pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
     return WaylandRuntime{
         .stream = try WaylandStream.init(allocator),
         .allocator = allocator,
-        .event_buffer = std.ArrayList(Message).init(allocator),
+        .event_buffer = std.array_list.Managed(Message).init(allocator),
         .reuse_ids = std.PriorityQueue(types.ObjectId, void, lessThan).init(allocator, {}),
         .next_id = 2,
         .pause_incoming = false,
@@ -61,7 +61,7 @@ pub fn getId(self: *WaylandRuntime) types.ObjectId {
     };
 }
 
-fn writeArray(writer: std.ArrayList(u8).Writer, data: []const u8, is_string: bool) !void {
+fn writeArray(writer: std.array_list.Managed(u8).Writer, data: []const u8, is_string: bool) !void {
     const len = if (is_string) data.len + 1 else data.len;
 
     try writer.writeInt(u32, @intCast(len), native_endian);
@@ -79,10 +79,10 @@ fn writeArray(writer: std.ArrayList(u8).Writer, data: []const u8, is_string: boo
 }
 
 pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, args: anytype) !void {
-    var message = std.ArrayList(u8).init(self.allocator);
+    var message = std.array_list.Managed(u8).init(self.allocator);
     defer message.deinit();
     const message_writer = message.writer();
-    var fd_list = std.ArrayList(std.posix.fd_t).init(self.allocator);
+    var fd_list = std.array_list.Managed(std.posix.fd_t).init(self.allocator);
     defer fd_list.deinit();
 
     inline for (comptime std.meta.fieldNames(@TypeOf(args))) |field_name| {
@@ -107,7 +107,7 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
             []const u8, []u8 => {
                 try writeArray(message_writer, field, false);
             },
-            std.ArrayList(u8) => {
+            std.array_list.Managed(u8) => {
                 try writeArray(message_writer, field.items, false);
             },
             types.Fd => {
@@ -145,15 +145,17 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
     const message_fd_list = try fd_list.toOwnedSlice();
     defer self.allocator.free(message_fd_list);
 
-    try self.stream.send(.{
-        .info = .{
-            .object = object_id,
-            .opcode = opcode,
+    try self.stream.send(
+        .{
+            .info = .{
+                .object = object_id,
+                .opcode = opcode,
+            },
+            .allocator = self.allocator,
+            .data = message_data,
+            .fd_list = message_fd_list,
         },
-        .allocator = self.allocator,
-        .data = message_data,
-        .fd_list = message_fd_list,
-    });
+    );
 }
 
 fn EventsUnion(comptime events: []const type) type {
@@ -262,4 +264,8 @@ pub fn next(
     }
 
     return null;
+}
+
+test {
+    @import("std").testing.refAllDecls(@This());
 }

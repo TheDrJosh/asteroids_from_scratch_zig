@@ -25,7 +25,7 @@ const Parent = struct {
 };
 
 lexer: Lexer,
-parents: std.ArrayList(Parent),
+parents: std.array_list.Managed(Parent),
 current_id: usize,
 allocator: std.mem.Allocator,
 
@@ -34,7 +34,7 @@ pub fn init(allocator: std.mem.Allocator, reader: *std.io.Reader) Parser {
         .lexer = Lexer.init(reader),
         .allocator = allocator,
         .current_id = 0,
-        .parents = std.ArrayList(Parent).init(allocator),
+        .parents = std.array_list.Managed(Parent).init(allocator),
     };
 }
 
@@ -119,7 +119,7 @@ pub fn next(self: *Parser) !Node {
 }
 
 const TagInfo = struct {
-    attribs: std.ArrayList(Node.Type.Entity.Attrib),
+    attribs: std.array_list.Managed(Node.Type.Entity.Attrib),
     self_closed: bool,
     pub fn deinit(self: *const TagInfo) void {
         for (self.attribs.items) |attrib| {
@@ -134,7 +134,7 @@ pub fn parseTagInfo(self: *Parser) !TagInfo {
     var token_text = std.Io.Writer.Allocating.init(self.allocator);
     defer token_text.deinit();
 
-    var attribs = std.ArrayList(Node.Type.Entity.Attrib).init(self.allocator);
+    var attribs = std.array_list.Managed(Node.Type.Entity.Attrib).init(self.allocator);
     errdefer attribs.deinit();
 
     state: switch (try self.lexer.next(&token_text.writer)) {

@@ -32,7 +32,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
 
         try writer.writeAll(",");
 
-        var new_ids = std.ArrayList(wayland.Arg).init(allocator);
+        var new_ids = std.array_list.Managed(wayland.Arg).init(allocator);
         defer new_ids.deinit();
 
         for (request.args.items) |arg| {
