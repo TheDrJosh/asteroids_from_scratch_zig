@@ -3,9 +3,9 @@ const builtin = @import("builtin");
 
 const native_endian = builtin.cpu.arch.endian();
 
-pub const WaylandStream = @import("WaylandStream.zig");
+pub const MessageStream = @import("MessageStream.zig");
 
-const WaylandRuntime = @This();
+const Runtime = @This();
 
 const types = @import("types.zig");
 
@@ -20,7 +20,7 @@ fn lessThan(context: void, a: types.ObjectId, b: types.ObjectId) std.math.Order 
     return std.math.order(a, b);
 }
 
-stream: WaylandStream,
+stream: MessageStream,
 allocator: std.mem.Allocator,
 //TODO replace with a sparce array
 object_register: std.ArrayHashMap(types.ObjectId, IObject, struct {
@@ -48,9 +48,9 @@ pub const IObject = struct {
     };
 };
 
-pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
-    return WaylandRuntime{
-        .stream = try WaylandStream.init(allocator),
+pub fn init(allocator: std.mem.Allocator) !Runtime {
+    return Runtime{
+        .stream = try MessageStream.init(allocator),
         .allocator = allocator,
         .object_register = .init(allocator),
         .object_register_mutex = .{},
@@ -60,7 +60,7 @@ pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
     };
 }
 
-pub fn deinit(self: *WaylandRuntime) void {
+pub fn deinit(self: *Runtime) void {
     self.stream.deinit();
     self.reuse_ids.deinit();
 
@@ -69,11 +69,11 @@ pub fn deinit(self: *WaylandRuntime) void {
     self.object_register.deinit();
 }
 
-pub fn display(self: *WaylandRuntime) !*Display {
+pub fn display(self: *Runtime) !*Display {
     return try Display.init(self);
 }
 
-pub fn getId(self: *WaylandRuntime) types.ObjectId {
+pub fn getId(self: *Runtime) types.ObjectId {
     self.reuse_ids_mutex.lock();
     defer self.reuse_ids_mutex.unlock();
     return self.reuse_ids.removeOrNull() orelse blk: {
@@ -100,7 +100,7 @@ fn writeArray(writer: std.array_list.Managed(u8).Writer, data: []const u8, is_st
     }
 }
 
-pub fn sendRequest(self: *WaylandRuntime, object_id: u32, opcode: u16, args: anytype) !void {
+pub fn sendRequest(self: *Runtime, object_id: u32, opcode: u16, args: anytype) !void {
     var message = std.array_list.Managed(u8).init(self.allocator);
     defer message.deinit();
     const message_writer = message.writer();
@@ -183,7 +183,7 @@ pub fn sendRequest(self: *WaylandRuntime, object_id: u32, opcode: u16, args: any
     );
 }
 
-pub fn registerObject(self: *WaylandRuntime, object: anytype) !void {
+pub fn registerObject(self: *Runtime, object: anytype) !void {
     self.object_register_mutex.lock();
     defer self.object_register_mutex.unlock();
 
@@ -236,7 +236,7 @@ pub fn registerObject(self: *WaylandRuntime, object: anytype) !void {
     );
 }
 
-pub fn unregisterObject(self: *WaylandRuntime, object_id: types.ObjectId) void {
+pub fn unregisterObject(self: *Runtime, object_id: types.ObjectId) void {
     self.object_register_mutex.lock();
     defer self.object_register_mutex.unlock();
 
@@ -245,7 +245,7 @@ pub fn unregisterObject(self: *WaylandRuntime, object_id: types.ObjectId) void {
     // std.debug.print("unregister object id: {}\n", .{object_id});
 }
 
-pub fn pullEvents(self: *WaylandRuntime) !void {
+pub fn pullEvents(self: *Runtime) !void {
     while (true) {
         const msg = try self.stream.next();
         defer msg.deinit();

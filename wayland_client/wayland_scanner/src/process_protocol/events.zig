@@ -90,7 +90,7 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
                         try writer.writeAll("std.array_list.Managed(u8)");
                     },
                     .fd => {
-                        try writer.writeAll("wayland_client.types.Fd");
+                        try writer.writeAll("std.fs.File");
                     },
                 }
                 try writer.writeAll(",");
@@ -185,7 +185,7 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
     if (has_event) {
         try writer.writeAll("\npub fn handleEvent(self: *");
         try utils.writePascalCase(writer, interface.name.items);
-        try writer.writeAll(", msg: wayland_client.WaylandRuntime.WaylandStream.Message) void {");
+        try writer.writeAll(", msg: wayland_client.Runtime.MessageStream.Message) void {");
         tab_writer.indent += 1;
 
         try writer.writeAll("\nswitch (msg.info.opcode) {");

@@ -2,7 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const types = @import("types.zig");
-const WaylandRuntime = @import("WaylandRuntime.zig");
+const Runtime = @import("Runtime.zig");
 
 const native_endian = builtin.cpu.arch.endian();
 
@@ -18,7 +18,7 @@ pub fn deinit(self: *const Message) void {
     self.allocator.free(self.fd_list);
 }
 
-pub fn parse(self: *const Message, comptime Args: type, runtime: *WaylandRuntime) !TypedMessage(Args) {
+pub fn parse(self: *const Message, comptime Args: type, runtime: *Runtime) !TypedMessage(Args) {
     var data_stream = std.io.fixedBufferStream(self.data);
     const data_reader = data_stream.reader();
     var fd_list_position: usize = 0;

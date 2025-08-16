@@ -1,5 +1,5 @@
 const std = @import("std");
-const WaylandRuntime = @import("WaylandRuntime.zig");
+const Runtime = @import("Runtime.zig");
 const protocols = @import("protocols");
 const Registry = @import("Registry.zig");
 const Message = @import("Message.zig");
@@ -7,12 +7,12 @@ const types = @import("types.zig");
 
 const Display = @This();
 
-runtime: *WaylandRuntime,
+runtime: *Runtime,
 
 pub const object_id = 1;
 pub const interface = "wl_display";
 
-pub fn init(runtime: *WaylandRuntime) !*Display {
+pub fn init(runtime: *Runtime) !*Display {
     const display = try runtime.allocator.create(Display);
     errdefer display.deinit();
     display.* = .{
@@ -51,9 +51,7 @@ pub fn getRegistry(self: *const Display) !*Registry {
     const c = try self.sync();
     defer c.deinit();
 
-    while ((try c.nextDone()) == null) {
-        // std.debug.print("test\n", .{});
-    }
+    while ((try c.nextDone()) == null) {}
 
     return registry;
 }
@@ -64,7 +62,6 @@ pub fn handleEvent(self: *Display, msg: Message) void {
             const parsed_msg = msg.parse(struct { object_id: types.ObjectId, code: u32, message: types.String }, self.runtime) catch unreachable;
             defer parsed_msg.args.deinit();
 
-            //TODO use interface
             self.runtime.object_register_mutex.lock();
             defer self.runtime.object_register_mutex.unlock();
 
@@ -73,7 +70,14 @@ pub fn handleEvent(self: *Display, msg: Message) void {
                     inter_handleError(inter.context, parsed_msg.args.code, parsed_msg.args.message.data());
                 }
             }
-            std.debug.panic("Wayland Error recived on unknown object(id: {}, code: {}, message: {s})", .{ parsed_msg.args.object_id, parsed_msg.args.code, parsed_msg.args.message.data() });
+            std.debug.panic(
+                "Wayland Error recived on unknown object(id: {}, code: {}, message: {s})",
+                .{
+                    parsed_msg.args.object_id,
+                    parsed_msg.args.code,
+                    parsed_msg.args.message.data(),
+                },
+            );
         },
         1 => {
             const parsed_msg = msg.parse(struct { id: u32 }, self.runtime) catch unreachable;

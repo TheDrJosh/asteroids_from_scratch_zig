@@ -187,7 +187,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
                     }
                 },
                 .fd => {
-                    try writer.print("\nwayland_client.types.Fd{{ .fd = {s} }},", .{arg.name.items});
+                    try writer.print("\nstd.fs.File{{ .handle = {s} }},", .{arg.name.items});
                 },
                 else => {
                     try writer.print("\n{s},", .{arg.name.items});

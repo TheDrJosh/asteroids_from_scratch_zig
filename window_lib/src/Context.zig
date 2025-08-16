@@ -6,7 +6,7 @@ pub const SharedMemoryManager = @import("SharedMemoryManager.zig");
 
 const Context = @This();
 
-runtime: *wayland_client.WaylandRuntime,
+runtime: *wayland_client.Runtime,
 
 display: *wayland_client.Display,
 registry: *wayland_client.Registry,
@@ -18,12 +18,12 @@ wm_base: *wayland_client.protocols.xdg_shell.XdgWmBase,
 allocator: std.mem.Allocator,
 
 pub fn init(allocator: std.mem.Allocator) !Context {
-    var runtime = try allocator.create(wayland_client.WaylandRuntime);
+    var runtime = try allocator.create(wayland_client.Runtime);
     errdefer allocator.destroy(runtime);
-    runtime.* = try wayland_client.WaylandRuntime.init(allocator);
+    runtime.* = try wayland_client.Runtime.init(allocator);
     errdefer runtime.deinit();
 
-    _ = try std.Thread.spawn(.{}, wayland_client.WaylandRuntime.pullEvents, .{runtime});
+    _ = try std.Thread.spawn(.{}, wayland_client.Runtime.pullEvents, .{runtime});
 
     const display = try runtime.display();
 

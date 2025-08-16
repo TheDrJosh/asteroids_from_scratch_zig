@@ -4,6 +4,7 @@ const wayland_client = @import("wayland_client");
 
 pub const Buffer = @import("Buffer.zig");
 
+//TODO move to wayland_client
 const SharedMemoryManager = @This();
 
 wl_shm: *wayland_client.protocols.wayland.WlShm,

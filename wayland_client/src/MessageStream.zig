@@ -6,7 +6,7 @@ const native_endian = builtin.cpu.arch.endian();
 
 pub const Message = @import("Message.zig");
 
-const WaylandStream = @This();
+const MessageStream = @This();
 const types = @import("types.zig");
 
 stream: UnixStream,
@@ -17,7 +17,7 @@ writer_buffer: []u8,
 reader_buffer: []u8,
 fd_buffer: []align(@alignOf(std.posix.fd_t)) u8,
 
-pub fn init(allocator: std.mem.Allocator) !WaylandStream {
+pub fn init(allocator: std.mem.Allocator) !MessageStream {
     var envs = try std.process.getEnvMap(allocator);
     defer envs.deinit();
 
@@ -45,7 +45,7 @@ pub fn init(allocator: std.mem.Allocator) !WaylandStream {
     const writer = stream.writer(writer_buffer);
     const reader = stream.reader(reader_buffer, fd_buffer);
 
-    return WaylandStream{
+    return MessageStream{
         .stream = stream,
         .allocator = allocator,
         .writer = writer,
@@ -56,7 +56,7 @@ pub fn init(allocator: std.mem.Allocator) !WaylandStream {
     };
 }
 
-pub fn deinit(self: *const WaylandStream) void {
+pub fn deinit(self: *const MessageStream) void {
     self.allocator.free(self.writer_buffer);
     self.allocator.free(self.reader_buffer);
     self.allocator.free(self.fd_buffer);
@@ -70,7 +70,7 @@ const Header = packed struct(u32) {
     size: u16,
 };
 
-pub fn next(self: *WaylandStream) !Message {
+pub fn next(self: *MessageStream) !Message {
     const info_len = @sizeOf(types.ObjectId) + @sizeOf(Header);
 
     var fds = std.array_list.Managed(std.posix.fd_t).init(self.allocator);
@@ -104,7 +104,7 @@ pub fn next(self: *WaylandStream) !Message {
     };
 }
 
-pub fn send(self: *WaylandStream, message: Message) !void {
+pub fn send(self: *MessageStream, message: Message) !void {
     try self.writer.interface.writeInt(types.ObjectId, message.info.object, native_endian);
     try self.writer.interface.writeInt(u32, @bitCast(Header{
         .opcode = message.info.opcode,

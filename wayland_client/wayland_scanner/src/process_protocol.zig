@@ -48,7 +48,7 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: *std.io.W
         try writer.writeAll(interface.name.items);
         try writer.print("\";\npub const version = {};\n", .{interface.version});
 
-        try writer.writeAll("\nobject_id: wayland_client.types.ObjectId,\nruntime: *wayland_client.WaylandRuntime,\n");
+        try writer.writeAll("\nobject_id: wayland_client.types.ObjectId,\nruntime: *wayland_client.Runtime,\n");
 
         for (interface.events.items) |event| {
             try writer.print("\n{s}_event_queue: ", .{event.name.items});
@@ -64,7 +64,7 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: *std.io.W
             try writer.print("\n{s}_event_queue_mutex: std.Thread.Mutex,", .{event.name.items});
         }
 
-        try writer.writeAll("\npub fn init(object_id: wayland_client.types.ObjectId, runtime: *wayland_client.WaylandRuntime) !*");
+        try writer.writeAll("\npub fn init(object_id: wayland_client.types.ObjectId, runtime: *wayland_client.Runtime) !*");
         try utils.writePascalCase(writer, interface.name.items);
         tab_writer.indent += 1;
         try writer.writeAll(" {\nconst object = try runtime.allocator.create(");

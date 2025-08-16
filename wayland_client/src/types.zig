@@ -1,6 +1,6 @@
 const std = @import("std");
 
-//TODO - make non-zero u32
+//TODO - make non-zero u32 https://github.com/ziglang/zig/issues/3806
 pub const ObjectId = u32;
 
 pub const NewId = struct {

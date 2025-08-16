@@ -1,5 +1,5 @@
 const std = @import("std");
-const WaylandRuntime = @import("WaylandRuntime.zig");
+const Runtime = @import("Runtime.zig");
 const protocols = @import("protocols");
 const Message = @import("Message.zig");
 const types = @import("types.zig");
@@ -7,7 +7,7 @@ const types = @import("types.zig");
 const Registry = @This();
 
 object_id: types.ObjectId,
-runtime: *WaylandRuntime,
+runtime: *Runtime,
 globals: std.ArrayList(GlobalInfo),
 globals_mutex: std.Thread.Mutex,
 
@@ -19,7 +19,7 @@ const GlobalInfo = struct {
 
 pub const interface = "wl_registry";
 
-pub fn init(object_id: types.ObjectId, runtime: *WaylandRuntime) !*Registry {
+pub fn init(object_id: types.ObjectId, runtime: *Runtime) !*Registry {
     const registry = try runtime.allocator.create(Registry);
     registry.* = .{
         .object_id = object_id,
