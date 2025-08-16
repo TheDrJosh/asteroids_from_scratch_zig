@@ -75,6 +75,7 @@ pub const Writer = struct {
     fn drain(io_w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
         const w: *Writer = @alignCast(@fieldParentPtr("interface", io_w));
         const buffered = io_w.buffered();
+
         var iovecs: [MAX_BUFFERS]std.posix.iovec_const = undefined;
         var msg: std.posix.msghdr_const = .{
             .name = null,

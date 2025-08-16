@@ -80,6 +80,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
                     }
 
                     if (arg.interface) |inter| {
+                        try writer.writeAll("*");
                         try resolver.writeResolvedInterface(writer, inter.items);
                     } else {
                         try writer.writeAll("wayland_client.types.ObjectId");
@@ -110,6 +111,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
             },
             1 => {
                 if (new_ids.items[0].interface) |inter| {
+                    try writer.writeByte('*');
                     try utils.writePascalCase(writer, inter.items);
                 } else {
                     try utils.writePascalCase(writer, new_ids.items[0].name.items);
@@ -132,6 +134,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
                     try writer.writeAll(new_id.name.items);
                     try writer.writeAll(": ");
                     if (new_id.interface) |inter| {
+                        try writer.writeByte('*');
                         try resolver.writeResolvedInterface(writer, inter.items);
                     } else {
                         try utils.writePascalCase(writer, new_id.name.items);
@@ -150,6 +153,14 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
 
         for (new_ids.items) |new_id| {
             try writer.print("const {s}_id = self.runtime.getId();\n", .{new_id.name.items});
+            try writer.print("const {s} = try ", .{new_id.name.items});
+            if (new_id.interface) |inter| {
+                try resolver.writeResolvedInterface(writer, inter.items);
+            } else {
+                try utils.writePascalCase(writer, new_id.name.items);
+            }
+            try writer.print(".init({s}_id, self.runtime);\n", .{new_id.name.items});
+            try writer.print("errdefer {s}.deinit();\n", .{new_id.name.items});
         }
 
         try writer.print("try self.runtime.sendRequest(self.object_id, {}, .{{", .{opcode});
@@ -195,14 +206,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
         switch (new_ids.items.len) {
             0 => {},
             1 => {
-                try writer.writeAll("\n\nreturn ");
-
-                if (new_ids.items[0].interface) |inter| {
-                    try utils.writePascalCase(writer, inter.items);
-                } else {
-                    try utils.writePascalCase(writer, new_ids.items[0].name.items);
-                }
-                try writer.print("{{ .object_id = {s}_id, .runtime = self.runtime }};", .{new_ids.items[0].name.items});
+                try writer.print("\n\nreturn {s};", .{new_ids.items[0].name.items});
             },
             else => {
                 try writer.writeAll("\n\nreturn .{");
@@ -223,38 +227,6 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
             },
         }
 
-        tab_writer.indent -= 1;
-
-        try writer.writeAll("\n}");
-    }
-
-    var has_destructor = false;
-    for (interface.requests.items) |request| {
-        if (request.type) |t| {
-            if (std.mem.eql(u8, t.items, "destructor")) {
-                has_destructor = true;
-                break;
-            }
-        }
-    }
-
-    if (has_destructor) {
-        try writer.writeAll("\npub fn deinit(self: *const ");
-        try utils.writePascalCase(writer, interface.name.items);
-        try writer.writeAll(") void {");
-        tab_writer.indent += 1;
-
-        for (interface.requests.items) |request| {
-            if (request.type) |t| {
-                if (std.mem.eql(u8, t.items, "destructor")) {
-                    try writer.writeAll("\n_ = self.");
-                    try utils.writeCammelCase(writer, request.name.items);
-                    try writer.writeAll("() catch std.debug.panic(\"The destructor \\\"");
-                    try utils.writeCammelCase(writer, request.name.items);
-                    try writer.writeAll("\\\" on object {d} errored.\", .{self.object_id});");
-                }
-            }
-        }
         tab_writer.indent -= 1;
 
         try writer.writeAll("\n}");

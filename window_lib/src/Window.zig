@@ -7,11 +7,11 @@ const Frame = @import("Frame.zig");
 
 const Window = @This();
 
-surface: wayland_client.protocols.wayland.WlSurface,
-xdg_surface: wayland_client.protocols.xdg_shell.XdgSurface,
-toplevel_surface: wayland_client.protocols.xdg_shell.XdgToplevel,
+surface: *wayland_client.protocols.wayland.WlSurface,
+xdg_surface: *wayland_client.protocols.xdg_shell.XdgSurface,
+toplevel_surface: *wayland_client.protocols.xdg_shell.XdgToplevel,
 
-toplevel_decoration: ?wayland_client.protocols.xdg_decoration_unstable_v1.ZxdgToplevelDecorationV1,
+toplevel_decoration: ?*wayland_client.protocols.xdg_decoration_unstable_v1.ZxdgToplevelDecorationV1,
 
 current_size: ?Size,
 has_decorations: bool,
@@ -35,7 +35,9 @@ pub const Size = struct {
 
 pub fn init(context: *Context, config: Config) !Window {
     const surface = try context.compositor.createSurface();
+
     const xdg_surface = try context.wm_base.getXdgSurface(surface);
+
     const toplevel_surface = try xdg_surface.getToplevel();
 
     try toplevel_surface.setTitle(config.title);
@@ -50,7 +52,7 @@ pub fn init(context: *Context, config: Config) !Window {
         try toplevel_surface.setAppId(app_id);
     }
 
-    const toplevel_decoration = if (try context.globals_manager.bind(
+    const toplevel_decoration = if (try context.registry.bind(
         wayland_client.protocols.xdg_decoration_unstable_v1.ZxdgDecorationManagerV1,
     )) |manager| blk: {
         defer manager.deinit();

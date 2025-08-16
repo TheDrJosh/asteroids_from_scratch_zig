@@ -51,10 +51,10 @@ pub fn next(self: *Parser) !Node {
 
     s: switch (try self.lexer.next(&token_text.writer)) {
         .tag_start => {
-            const name = try self.allocator.alloc(u8, token_text.getWritten().len - 1);
+            const name = try self.allocator.alloc(u8, token_text.written().len - 1);
             errdefer self.allocator.free(name);
 
-            @memcpy(name, token_text.getWritten()[1..]);
+            @memcpy(name, token_text.written()[1..]);
             token_text.clearRetainingCapacity();
 
             var tag_info = try self.parseTagInfo();
@@ -90,14 +90,14 @@ pub fn next(self: *Parser) !Node {
         .tag_close => {
             const entity = self.parents.pop() orelse return error.unexpected_token;
             defer entity.deinit();
-            if (!std.mem.eql(u8, token_text.getWritten()[2..(token_text.getWritten().len - 1)], entity.name)) {
+            if (!std.mem.eql(u8, token_text.written()[2..(token_text.written().len - 1)], entity.name)) {
                 return error.unexpected_token;
             }
             token_text.clearRetainingCapacity();
             continue :s try self.lexer.next(&token_text.writer);
         },
         .text => {
-            for (token_text.getWritten()) |c| {
+            for (token_text.written()) |c| {
                 if (!std.ascii.isWhitespace(c)) {
                     const parent_id = if (self.parents.getLastOrNull()) |p| p.id else null;
 
@@ -151,7 +151,7 @@ pub fn parseTagInfo(self: *Parser) !TagInfo {
             var text = std.Io.Writer.Allocating.init(self.allocator);
             defer text.deinit();
 
-            var text_reader = std.Io.Reader.fixed(token_text.getWritten()[1..(token_text.getWritten().len - 1)]);
+            var text_reader = std.Io.Reader.fixed(token_text.written()[1..(token_text.written().len - 1)]);
 
             while ((text_reader.streamDelimiter(&text.writer, '\\') catch |e| if (e == error.EndOfStream) 0 else return e) != 0) {
                 switch (try text_reader.takeByte()) {

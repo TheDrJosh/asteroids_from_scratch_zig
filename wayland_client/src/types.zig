@@ -33,7 +33,7 @@ pub const String = union(enum) {
     pub fn data(self: String) []const u8 {
         return switch (self) {
             .dynamic => |arr| arr.items,
-            .static => |arr| arr, 
+            .static => |arr| arr,
         };
     }
 
@@ -43,8 +43,4 @@ pub const String = union(enum) {
             .static => {},
         }
     }
-};
-
-pub const Fd = struct {
-    fd: std.posix.fd_t,
 };

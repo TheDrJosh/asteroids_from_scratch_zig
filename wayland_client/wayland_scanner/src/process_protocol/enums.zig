@@ -62,6 +62,10 @@ pub fn processEnums(tab_writer: *TabWriter, interface: wayland.Interface, alloca
                     }
                 }
             }
+            if (empty_count) |ec| {
+                try writer.print("\n_{d}: u{d} = 0,", .{ i, ec });
+                i += 1;
+            }
 
             for (@"enum".entries.items) |entry| {
                 if (entry.value > 0 and std.math.isPowerOfTwo(@as(u64, @intCast(entry.value)))) {
@@ -135,5 +139,19 @@ pub fn processEnums(tab_writer: *TabWriter, interface: wayland.Interface, alloca
         tab_writer.indent -= 1;
 
         try writer.writeAll("\n};");
+
+        if (std.mem.eql(u8, @"enum".name.items, "error")) {
+            try writer.writeAll("\npub fn handleError(self: *");
+            try utils.writePascalCase(writer, interface.name.items);
+            try writer.writeAll(", code: u32, message: []const u8) void {");
+            tab_writer.indent += 1;
+
+            try writer.writeAll("\nstd.debug.panic(\"Wayland Error recived on ");
+            try utils.writePascalCase(writer, interface.name.items);
+            try writer.writeAll("(id: {}, code: {}, message: {s})\", .{ self.object_id, @as(Error, @enumFromInt(code)), message });");
+
+            tab_writer.indent -= 1;
+            try writer.writeAll("\n}");
+        }
     }
 }

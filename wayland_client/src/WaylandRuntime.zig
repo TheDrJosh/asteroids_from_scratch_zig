@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 
 const native_endian = builtin.cpu.arch.endian();
 
-const WaylandStream = @import("WaylandStream.zig");
+pub const WaylandStream = @import("WaylandStream.zig");
 
 const WaylandRuntime = @This();
 
@@ -13,6 +13,8 @@ const Message = @import("Message.zig");
 
 const wayland_protocol = @import("protocols").wayland;
 
+const Display = @import("Display.zig");
+
 fn lessThan(context: void, a: types.ObjectId, b: types.ObjectId) std.math.Order {
     _ = context;
     return std.math.order(a, b);
@@ -20,40 +22,60 @@ fn lessThan(context: void, a: types.ObjectId, b: types.ObjectId) std.math.Order 
 
 stream: WaylandStream,
 allocator: std.mem.Allocator,
-event_buffer: std.array_list.Managed(Message),
+//TODO replace with a sparce array
+object_register: std.ArrayHashMap(types.ObjectId, IObject, struct {
+    pub fn eql(self: @This(), a: u32, b: u32, i: usize) bool {
+        _ = self;
+        _ = i;
+        return a == b;
+    }
+    pub fn hash(self: @This(), key: u32) u32 {
+        _ = self;
+        return key;
+    }
+}, false),
+object_register_mutex: std.Thread.Mutex,
 reuse_ids: std.PriorityQueue(types.ObjectId, void, lessThan),
+reuse_ids_mutex: std.Thread.Mutex,
 next_id: types.ObjectId,
-pause_incoming: bool,
+
+pub const IObject = struct {
+    context: *anyopaque,
+    vtable: *const VTable,
+    pub const VTable = struct {
+        handleEvent: ?*const fn (context: *anyopaque, msg: Message) void,
+        handleError: ?*const fn (context: *anyopaque, code: u32, msg: []const u8) void,
+    };
+};
 
 pub fn init(allocator: std.mem.Allocator) !WaylandRuntime {
     return WaylandRuntime{
         .stream = try WaylandStream.init(allocator),
         .allocator = allocator,
-        .event_buffer = std.array_list.Managed(Message).init(allocator),
-        .reuse_ids = std.PriorityQueue(types.ObjectId, void, lessThan).init(allocator, {}),
+        .object_register = .init(allocator),
+        .object_register_mutex = .{},
+        .reuse_ids = .init(allocator, {}),
+        .reuse_ids_mutex = .{},
         .next_id = 2,
-        .pause_incoming = false,
     };
 }
 
-pub fn deinit(self: *const WaylandRuntime) void {
+pub fn deinit(self: *WaylandRuntime) void {
     self.stream.deinit();
     self.reuse_ids.deinit();
 
-    for (self.event_buffer.items) |msg| {
-        msg.deinit();
-    }
-    self.event_buffer.deinit();
+    self.object_register_mutex.lock();
+    defer self.object_register_mutex.unlock();
+    self.object_register.deinit();
 }
 
-pub fn display(self: *WaylandRuntime) wayland_protocol.WlDisplay {
-    return .{
-        .object_id = 1,
-        .runtime = self,
-    };
+pub fn display(self: *WaylandRuntime) !*Display {
+    return try Display.init(self);
 }
 
 pub fn getId(self: *WaylandRuntime) types.ObjectId {
+    self.reuse_ids_mutex.lock();
+    defer self.reuse_ids_mutex.unlock();
     return self.reuse_ids.removeOrNull() orelse blk: {
         const id = self.next_id;
         self.next_id += 1;
@@ -78,7 +100,7 @@ fn writeArray(writer: std.array_list.Managed(u8).Writer, data: []const u8, is_st
     }
 }
 
-pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, args: anytype) !void {
+pub fn sendRequest(self: *WaylandRuntime, object_id: u32, opcode: u16, args: anytype) !void {
     var message = std.array_list.Managed(u8).init(self.allocator);
     defer message.deinit();
     const message_writer = message.writer();
@@ -110,8 +132,8 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
             std.array_list.Managed(u8) => {
                 try writeArray(message_writer, field.items, false);
             },
-            types.Fd => {
-                try fd_list.append(field.fd);
+            std.fs.File => {
+                try fd_list.append(field.handle);
             },
             else => |T| {
                 switch (@typeInfo(T)) {
@@ -121,6 +143,9 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
                         } else {
                             @compileError("invalid enum arg. enum must have 32 bit tag type");
                         }
+                    },
+                    .pointer => {
+                        try message_writer.writeInt(u32, field.object_id, native_endian);
                     },
                     .@"struct" => {
                         try message_writer.writeInt(u32, field.object_id, native_endian);
@@ -158,112 +183,84 @@ pub fn sendRequest(self: *const WaylandRuntime, object_id: u32, opcode: u16, arg
     );
 }
 
-fn EventsUnion(comptime events: []const type) type {
-    var e_fields: []const std.builtin.Type.EnumField = &[0]std.builtin.Type.EnumField{};
+pub fn registerObject(self: *WaylandRuntime, object: anytype) !void {
+    self.object_register_mutex.lock();
+    defer self.object_register_mutex.unlock();
 
-    for (0..events.len) |i| {
-        e_fields = e_fields ++ &[1]std.builtin.Type.EnumField{
-            .{
-                .name = std.fmt.comptimePrint("{}", .{i}),
-                .value = i,
-            },
-        };
+    const object_id = if (@hasField(std.meta.Child(@TypeOf(object)), "object_id")) object.object_id else std.meta.Child(@TypeOf(object)).object_id;
+
+    if (self.object_register.contains(object_id)) {
+        std.debug.print("object already registered type: {s}, id: {}\n", .{ std.meta.Child(@TypeOf(object)).interface, object_id });
+        return error.object_already_registered;
     }
 
-    const E = @Type(std.builtin.Type{
-        .@"enum" = .{
-            .decls = &[0]std.builtin.Type.Declaration{},
-            .is_exhaustive = true,
-            .tag_type = usize,
-            .fields = e_fields,
-        },
-    });
+    const handleEvent: ?*const fn (context: *anyopaque, msg: Message) void = if (std.meta.hasFn(std.meta.Child(@TypeOf(object)), "handleEvent"))
+        &struct {
+            pub fn handleEvent(context: *anyopaque, msg: Message) void {
+                const s: @TypeOf(object) = @ptrCast(@alignCast(context));
+                s.handleEvent(msg);
+            }
+        }.handleEvent
+    else
+        null;
 
-    var u_fields: []const std.builtin.Type.UnionField = &[0]std.builtin.Type.UnionField{};
+    const handleError: ?*const fn (context: *anyopaque, code: u32, msg: []const u8) void = if (std.meta.hasFn(std.meta.Child(@TypeOf(object)), "handleError"))
+        &struct {
+            pub fn handleError(context: *anyopaque, code: u32, msg: []const u8) void {
+                const s: @TypeOf(object) = @ptrCast(@alignCast(context));
+                s.handleError(code, msg);
+            }
+        }.handleError
+    else
+        null;
 
-    for (0..events.len) |i| {
-        u_fields = u_fields ++ &[1]std.builtin.Type.UnionField{
-            .{
-                .name = std.fmt.comptimePrint("{}", .{i}),
-                .type = events[i],
-                .alignment = @alignOf(events[i]),
+    // std.debug.print(
+    //     "register object type: {s}, id: {}, handleEvent: {}, handleError: {}\n",
+    //     .{
+    //         std.meta.Child(@TypeOf(object)).interface,
+    //         object_id,
+    //         handleEvent != null,
+    //         handleError != null,
+    //     },
+    // );
+
+    try self.object_register.put(
+        object_id,
+        IObject{
+            .context = object,
+            .vtable = &.{
+                .handleEvent = handleEvent,
+                .handleError = handleError,
             },
-        };
-    }
-
-    const U = @Type(std.builtin.Type{
-        .@"union" = .{
-            .decls = &[0]std.builtin.Type.Declaration{},
-            .layout = .auto,
-            .tag_type = E,
-            .fields = u_fields,
         },
-    });
-
-    return U;
+    );
 }
 
-pub fn next(
-    self: *WaylandRuntime,
-    comptime events: []const type,
-    object_ids: [events.len]types.ObjectId,
-) !?EventsUnion(events) {
-    for (0..self.event_buffer.items.len) |i| {
-        inline for (0..events.len) |j| {
-            if (self.event_buffer.items[i].info.object == object_ids[j] and self.event_buffer.items[i].info.opcode == events[j].opcode) {
-                const msg = self.event_buffer.orderedRemove(i);
-                defer msg.deinit();
+pub fn unregisterObject(self: *WaylandRuntime, object_id: types.ObjectId) void {
+    self.object_register_mutex.lock();
+    defer self.object_register_mutex.unlock();
 
-                const arg = try msg.parse(events[j]);
+    _ = self.object_register.swapRemove(object_id);
 
-                return @unionInit(
-                    EventsUnion(events),
-                    std.fmt.comptimePrint("{}", .{j}),
-                    arg.args,
-                );
+    // std.debug.print("unregister object id: {}\n", .{object_id});
+}
+
+pub fn pullEvents(self: *WaylandRuntime) !void {
+    while (true) {
+        const msg = try self.stream.next();
+        defer msg.deinit();
+
+        self.object_register_mutex.lock();
+        defer self.object_register_mutex.unlock();
+
+        if (self.object_register.get(msg.info.object)) |object| {
+            if (object.vtable.handleEvent) |handleEvent| {
+                self.object_register_mutex.unlock();
+                handleEvent(object.context, msg);
+                self.object_register_mutex.lock();
             }
         }
     }
-
-    if (!self.pause_incoming) {
-        while (try self.stream.next()) |msg| {
-            if (msg.info.object == 1) {
-                defer msg.deinit();
-                switch (msg.info.opcode) {
-                    0 => {
-                        const parsed_msg = try msg.parse(struct { object_id: types.ObjectId, code: u32, message: types.String });
-                        defer parsed_msg.args.message.deinit();
-
-                        std.debug.panic("Wayland Error recived on object({}), code({}). {s}\n", .{ parsed_msg.args.object_id, parsed_msg.args.code, parsed_msg.args.message.data() });
-                    },
-                    1 => {
-                        const parsed_msg = try msg.parse(struct { id: u32 });
-
-                        try self.reuse_ids.add(parsed_msg.args.id);
-                    },
-                    else => {},
-                }
-            } else {
-                inline for (0..events.len) |j| {
-                    if (msg.info.object == object_ids[j] and msg.info.opcode == events[j].opcode) {
-                        defer msg.deinit();
-
-                        const arg = try msg.parse(events[j]);
-
-                        return @unionInit(
-                            EventsUnion(events),
-                            std.fmt.comptimePrint("{d}", .{j}),
-                            arg.args,
-                        );
-                    }
-                }
-
-                try self.event_buffer.append(msg);
-            }
-        }
-    }
-
-    return null;
 }
 
 test {

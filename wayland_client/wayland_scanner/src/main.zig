@@ -9,17 +9,20 @@ const NamespaceResolver = @import("NamespaceResolver.zig");
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer std.debug.assert(gpa.deinit() == .ok);
-    const allocator = gpa.allocator();
+
+    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
     var arg = try std.process.argsWithAllocator(allocator);
-    defer arg.deinit();
+    // defer arg.deinit();
 
     _ = arg.skip();
 
     const output_file_name = arg.next() orelse std.debug.panic("no output file provided", .{});
 
     const output_file = try std.fs.cwd().createFile(output_file_name, .{});
-    defer output_file.close();
+    // defer output_file.close();
     var output_buf = [1]u8{0} ** 1024;
     var output_file_file_writer = output_file.writer(&output_buf);
     const output_file_writer = &output_file_file_writer.interface;
@@ -32,18 +35,16 @@ pub fn main() !void {
     );
 
     var protocols = std.array_list.Managed(wayland.Protocol).init(allocator);
-    defer {
-        for (protocols.items) |protocol| {
-            protocol.deinit();
-        }
-        protocols.deinit();
-    }
+    // defer {
+    //     for (protocols.items) |protocol| {
+    //         protocol.deinit();
+    //     }
+    //     protocols.deinit();
+    // }
 
     while (arg.next()) |input_file_name| {
         const input_file = try std.fs.cwd().openFile(input_file_name, .{});
-        defer input_file.close();
-
-        // std.debug.print("file: {s}\n", .{input_file_name});
+        // defer input_file.close();
 
         //TODO test diffent buffer sizes
         var buffer: [8192]u8 = undefined;
@@ -51,16 +52,16 @@ pub fn main() !void {
         var input_file_reader = input_file.reader(&buffer);
 
         const xml = try xml_parser.Document.init(allocator, &input_file_reader.interface);
-        defer xml.deinit();
+        // defer xml.deinit();
 
         const protocol = try wayland.Protocol.init(allocator, xml);
-        errdefer protocol.deinit();
+        // errdefer protocol.deinit();
 
         try protocols.append(protocol);
     }
 
     var resolver = NamespaceResolver.init(allocator);
-    defer resolver.deinit();
+    // defer resolver.deinit();
 
     for (protocols.items) |protocol| {
         try resolver.registerProtocol(protocol);

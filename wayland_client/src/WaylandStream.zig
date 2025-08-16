@@ -4,13 +4,18 @@ const UnixStream = @import("UnixStream.zig");
 
 const native_endian = builtin.cpu.arch.endian();
 
-const Message = @import("Message.zig");
+pub const Message = @import("Message.zig");
 
-pub const WaylandStream = @This();
+const WaylandStream = @This();
 const types = @import("types.zig");
 
-socket: UnixStream,
+stream: UnixStream,
+writer: UnixStream.Writer,
+reader: UnixStream.Reader,
 allocator: std.mem.Allocator,
+writer_buffer: []u8,
+reader_buffer: []u8,
+fd_buffer: []align(@alignOf(std.posix.fd_t)) u8,
 
 pub fn init(allocator: std.mem.Allocator) !WaylandStream {
     var envs = try std.process.getEnvMap(allocator);
@@ -18,7 +23,7 @@ pub fn init(allocator: std.mem.Allocator) !WaylandStream {
 
     const wayland_socket_env = envs.get("WAYLAND_SOCKET");
 
-    const socket = if (wayland_socket_env) |wayland_socket_str|
+    const stream = if (wayland_socket_env) |wayland_socket_str|
         UnixStream{
             .handle = try std.fmt.parseInt(std.posix.fd_t, wayland_socket_str, 10),
         }
@@ -31,16 +36,31 @@ pub fn init(allocator: std.mem.Allocator) !WaylandStream {
 
         break :blk try UnixStream.open(addr);
     };
-    errdefer socket.close();
+    errdefer stream.close();
+
+    const writer_buffer = try allocator.alloc(u8, 1024);
+    const reader_buffer = try allocator.alloc(u8, 1024);
+    const fd_buffer = try allocator.alignedAlloc(u8, std.mem.Alignment.fromByteUnits(@alignOf(std.posix.fd_t)), 1024);
+
+    const writer = stream.writer(writer_buffer);
+    const reader = stream.reader(reader_buffer, fd_buffer);
 
     return WaylandStream{
-        .socket = socket,
+        .stream = stream,
         .allocator = allocator,
+        .writer = writer,
+        .reader = reader,
+        .writer_buffer = writer_buffer,
+        .reader_buffer = reader_buffer,
+        .fd_buffer = fd_buffer,
     };
 }
 
 pub fn deinit(self: *const WaylandStream) void {
-    self.socket.close();
+    self.allocator.free(self.writer_buffer);
+    self.allocator.free(self.reader_buffer);
+    self.allocator.free(self.fd_buffer);
+    self.stream.close();
 }
 
 const MAX_FD_RECV: usize = 32;
@@ -50,33 +70,26 @@ const Header = packed struct(u32) {
     size: u16,
 };
 
-pub fn next(self: *const WaylandStream) !Message {
+pub fn next(self: *WaylandStream) !Message {
     const info_len = @sizeOf(types.ObjectId) + @sizeOf(Header);
 
     var fds = std.array_list.Managed(std.posix.fd_t).init(self.allocator);
     errdefer fds.deinit();
 
-    //TODO test buffer sizes
-    var buffer: [1024]u8 = undefined;
-    //TODO test buffer sizes
-    var fd_buffer: [128]u8 align(@alignOf(std.posix.fd_t)) = undefined;
+    const id = try self.reader.interface.takeInt(types.ObjectId, native_endian);
 
-    var reader = self.socket.reader(&buffer, &fd_buffer);
-
-    const id = try reader.interface.takeInt(types.ObjectId, native_endian);
-
-    if (reader.fd_buffer) |f| {
+    if (self.reader.fd_buffer) |f| {
         try fds.appendSlice(f);
     }
 
-    const header: Header = @bitCast(try reader.interface.takeInt(u32, native_endian));
-    if (reader.fd_buffer) |f| {
+    const header: Header = @bitCast(try self.reader.interface.takeInt(u32, native_endian));
+    if (self.reader.fd_buffer) |f| {
         try fds.appendSlice(f);
     }
 
-    const body_buf = try reader.interface.readAlloc(self.allocator, @as(usize, @intCast(@as(i32, @intCast(header.size)) - info_len)));
+    const body_buf = try self.reader.interface.readAlloc(self.allocator, @as(usize, @intCast(@as(i32, @intCast(header.size)) - info_len)));
     errdefer self.allocator.free(body_buf);
-    if (reader.fd_buffer) |f| {
+    if (self.reader.fd_buffer) |f| {
         try fds.appendSlice(f);
     }
 
@@ -91,23 +104,18 @@ pub fn next(self: *const WaylandStream) !Message {
     };
 }
 
-pub fn send(self: *const WaylandStream, message: Message) !void {
-    //TODO test buffer sizes
-    var buffer: [1024]u8 = undefined;
-
-    var writer = self.socket.writer(&buffer);
-
-    try writer.interface.writeInt(types.ObjectId, message.info.object, native_endian);
-    try writer.interface.writeInt(u32, @bitCast(Header{
+pub fn send(self: *WaylandStream, message: Message) !void {
+    try self.writer.interface.writeInt(types.ObjectId, message.info.object, native_endian);
+    try self.writer.interface.writeInt(u32, @bitCast(Header{
         .opcode = message.info.opcode,
         .size = @intCast(message.data.len + 8),
     }), native_endian);
     for (message.fd_list) |fd| {
         var b = [0]u8{};
         var reader = (std.fs.File{ .handle = fd }).reader(&b);
-        _ = try writer.interface.sendFile(&reader, .unlimited);
+        _ = try self.writer.interface.sendFile(&reader, .unlimited);
     }
-    try writer.interface.writeAll(message.data);
+    try self.writer.interface.writeAll(message.data);
 
-    try writer.interface.flush();
+    try self.writer.interface.flush();
 }

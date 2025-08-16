@@ -2,14 +2,13 @@ const std = @import("std");
 
 const wayland_client = @import("wayland_client");
 
-const GlobalsManager = @import("GlobalsManager.zig");
 const SharedMemoryManager = @import("SharedMemoryManager.zig");
 pub const Frame = @import("Frame.zig");
 
 const Buffer = @This();
 
 data: []align(std.heap.page_size_min) u8,
-pool: wayland_client.protocols.wayland.WlShmPool,
+pool: *wayland_client.protocols.wayland.WlShmPool,
 
 pub fn deinit(self: *const Buffer) void {
     std.posix.munmap(self.data);

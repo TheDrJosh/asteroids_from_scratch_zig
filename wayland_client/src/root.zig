@@ -1,15 +1,21 @@
 pub const types = @import("types.zig");
 pub const WaylandRuntime = @import("WaylandRuntime.zig");
 pub const protocols = @import("protocols");
+pub const Display = @import("Display.zig");
+pub const Registry = @import("Registry.zig");
 
 test "callback sync" {
     const std = @import("std");
     var runtime = try WaylandRuntime.init(std.testing.allocator);
     defer runtime.deinit();
 
-    const display = runtime.display();
+    _ = try std.Thread.spawn(.{}, WaylandRuntime.pullEvents, .{&runtime});
+
+    const display = try runtime.display();
+    defer display.deinit();
 
     const callback = try display.sync();
+    defer callback.deinit();
 
     std.Thread.sleep(1_000_000_000);
 

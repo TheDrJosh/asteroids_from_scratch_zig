@@ -2,16 +2,15 @@ const std = @import("std");
 
 const wayland_client = @import("wayland_client");
 
-const GlobalsManager = @import("GlobalsManager.zig");
 pub const Buffer = @import("Buffer.zig");
 
 const SharedMemoryManager = @This();
 
-wl_shm: wayland_client.protocols.wayland.WlShm,
+wl_shm: *wayland_client.protocols.wayland.WlShm,
 prng: std.Random.DefaultPrng,
 
-pub fn init(globals_manager: *GlobalsManager) !SharedMemoryManager {
-    const wl_shm = try globals_manager.bind(wayland_client.protocols.wayland.WlShm) orelse @panic("no global wl_shm");
+pub fn init(registry: *wayland_client.Registry) !SharedMemoryManager {
+    const wl_shm = try registry.bind(wayland_client.protocols.wayland.WlShm) orelse @panic("no global wl_shm");
 
     const prng = std.Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
@@ -64,7 +63,7 @@ fn createShmFile(self: *SharedMemoryManager) !std.posix.fd_t {
         var buff = [1]u8{0} ** 17;
         const name = try std.fmt.bufPrintZ(&buff, "/wl_shm-{X:0>8}", .{rand});
 
-        std.debug.print("name: {s}\n", .{name});
+        // std.debug.print("name: {s}\n", .{name});
 
         const fd = std.c.shm_open(name.ptr, @bitCast(std.c.O{
             .ACCMODE = .RDWR,

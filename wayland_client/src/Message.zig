@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const types = @import("types.zig");
+const WaylandRuntime = @import("WaylandRuntime.zig");
 
 const native_endian = builtin.cpu.arch.endian();
 
@@ -17,7 +18,7 @@ pub fn deinit(self: *const Message) void {
     self.allocator.free(self.fd_list);
 }
 
-pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
+pub fn parse(self: *const Message, comptime Args: type, runtime: *WaylandRuntime) !TypedMessage(Args) {
     var data_stream = std.io.fixedBufferStream(self.data);
     const data_reader = data_stream.reader();
     var fd_list_position: usize = 0;
@@ -54,12 +55,12 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
             std.array_list.Managed(u8) => {
                 field.* = try readArray(data_reader, false, self.allocator);
             },
-            types.Fd => {
+            std.fs.File => {
                 if (fd_list_position >= self.fd_list.len) {
                     return error.EndOfStream;
                 }
-                field.* = types.Fd{
-                    .fd = self.fd_list[fd_list_position],
+                field.* = .{
+                    .handle = self.fd_list[fd_list_position],
                 };
                 fd_list_position += 1;
             },
@@ -71,6 +72,16 @@ pub fn parse(self: *const Message, Args: type) !TypedMessage(Args) {
                         } else {
                             @compileError("invalid enum arg. enum must have 32 bit tag type");
                         }
+                    },
+                    .@"struct" => |s| {
+                        if (s.layout == .@"packed" and s.backing_integer == u32) {
+                            field.* = @bitCast(try data_reader.readInt(u32, native_endian));
+                        } else {
+                            @compileError("invalid struct arg. struct must have 32 bit backing integer");
+                        }
+                    },
+                    .pointer => |p| {
+                        field.* = try p.child.init(try data_reader.readInt(types.ObjectId, native_endian), runtime);
                     },
                     else => {
                         @compileError("invalid arg " ++ @typeName(E));
