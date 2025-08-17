@@ -79,6 +79,7 @@ pub fn next(self: *Parser) !Node {
             return Node{
                 .parent = parent_id,
                 .allocator = self.allocator,
+                .document = null,
                 .type = .{
                     .entity = .{
                         .attribs = try tag_info.attribs.toOwnedSlice(),
@@ -104,6 +105,7 @@ pub fn next(self: *Parser) !Node {
                     self.current_id += 1;
                     return .{
                         .allocator = self.allocator,
+                        .document = null,
                         .parent = parent_id,
                         .type = .{
                             .text = try token_text.toOwnedSlice(),

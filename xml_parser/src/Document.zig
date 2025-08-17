@@ -9,7 +9,9 @@ const Document = @This();
 nodes: []const Node,
 allocator: std.mem.Allocator,
 
-pub fn init(allocator: std.mem.Allocator, reader: *std.Io.Reader) !Document {
+pub fn init(allocator: std.mem.Allocator, reader: *std.Io.Reader) !*const Document {
+    const doc = try  allocator.create(Document);
+
     var parser = Parser.init(allocator, reader);
     defer parser.deinit();
 
@@ -25,10 +27,16 @@ pub fn init(allocator: std.mem.Allocator, reader: *std.Io.Reader) !Document {
         try nodes.append(node);
     }
 
-    return Document{
+    for (nodes.items) |*n| {
+        n.document = doc;
+    }
+
+    doc.* = Document{
         .nodes = try nodes.toOwnedSlice(),
         .allocator = allocator,
     };
+
+    return doc;
 }
 
 pub fn deinit(self: *const Document) void {
@@ -36,6 +44,7 @@ pub fn deinit(self: *const Document) void {
         node.deinit();
     }
     self.allocator.free(self.nodes);
+    self.allocator.destroy(self);
 }
 
 pub const ChildrenIterator = struct {
@@ -71,7 +80,7 @@ pub const FindAllIterator = struct {
     index: usize,
     path: []const u8,
 
-    pub fn next(self: *FindAllIterator) ?Node.Id {
+    pub fn next(self: *FindAllIterator) ?*const Node {
         outer: while (self.index < self.document.nodes.len) {
             defer self.index += 1;
             switch (self.document.nodes[self.index].type) {
@@ -88,7 +97,7 @@ pub const FindAllIterator = struct {
                         }
                     }
                     if (current == self.base_node) {
-                        return self.index;
+                        return &self.document.nodes[self.index];
                     }
                 },
                 else => {},
@@ -108,7 +117,7 @@ pub fn findAll(self: *const Document, base_node: ?Node.Id, path: []const u8) Fin
     };
 }
 
-pub fn find(self: *const Document, base_node: ?Node.Id, path: []const u8) ?Node.Id {
+pub fn find(self: *const Document, base_node: ?Node.Id, path: []const u8) ?*const Node {
     var iter = self.findAll(base_node, path);
     return iter.next();
 }

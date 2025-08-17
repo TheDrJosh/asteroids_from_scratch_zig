@@ -8,24 +8,23 @@ pub const Protocol = struct {
     description: ?Description,
     interfaces: std.array_list.Managed(Interface),
 
-    pub fn init(allocator: std.mem.Allocator, document: xml_parser.Document) !Protocol {
-        const protocol_id = document.find(null, "protocol") orelse return error.no_protocol;
-        const protocol = document.getNode(protocol_id);
+    pub fn init(allocator: std.mem.Allocator, document: *const xml_parser.Document) !Protocol {
+        const protocol = document.find(null, "protocol") orelse return error.no_protocol;
 
         var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
         try name.appendSlice(protocol.type.entity.getAttrib("name") orelse return error.no_name);
 
-        const copyright = try getTextFrom(document, protocol_id, "copyright", allocator);
+        const copyright = try getTextFrom(protocol, "copyright", allocator);
         errdefer if (copyright) |c| c.deinit();
 
-        const description = if (document.find(protocol_id, "description")) |desc|
-            try Description.init(document, desc, allocator)
+        const description = if (protocol.find("description")) |desc|
+            try Description.init(desc, allocator)
         else
             null;
         errdefer if (description) |d| d.deinit();
 
-        var interfaces = try processAllChildren(document, protocol_id, "interface", Interface, allocator);
+        var interfaces = try processAllChildren(protocol, "interface", Interface, allocator);
         errdefer {
             for (interfaces.items) |i| {
                 i.deinit();
@@ -65,22 +64,20 @@ pub const Interface = struct {
     events: std.array_list.Managed(Event),
     enums: std.array_list.Managed(Enum),
 
-    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Interface {
-        const node = document.getNode(node_id).type.entity;
-
+    pub fn init(node: *const xml_parser.Node, allocator: std.mem.Allocator) !Interface {
         var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
-        try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
+        try name.appendSlice(node.type.entity.getAttrib("name") orelse return error.no_name);
 
-        const version = if (node.getAttrib("version")) |str| try std.fmt.parseInt(u32, str, 0) else return error.no_version;
+        const version = if (node.type.entity.getAttrib("version")) |str| try std.fmt.parseInt(u32, str, 0) else return error.no_version;
 
-        const description = if (document.find(node_id, "description")) |desc|
-            try Description.init(document, desc, allocator)
+        const description = if (node.find("description")) |desc|
+            try Description.init(desc, allocator)
         else
             null;
         errdefer if (description) |d| d.deinit();
 
-        var requests = try processAllChildren(document, node_id, "request", Request, allocator);
+        var requests = try processAllChildren(node, "request", Request, allocator);
         errdefer {
             for (requests.items) |i| {
                 i.deinit();
@@ -88,7 +85,7 @@ pub const Interface = struct {
             requests.deinit();
         }
 
-        var events = try processAllChildren(document, node_id, "event", Event, allocator);
+        var events = try processAllChildren(node, "event", Event, allocator);
         errdefer {
             for (events.items) |i| {
                 i.deinit();
@@ -96,7 +93,7 @@ pub const Interface = struct {
             events.deinit();
         }
 
-        var enums = try processAllChildren(document, node_id, "enum", Enum, allocator);
+        var enums = try processAllChildren(node, "enum", Enum, allocator);
         errdefer {
             for (enums.items) |i| {
                 i.deinit();
@@ -147,14 +144,12 @@ pub const Request = struct {
     description: ?Description,
     args: std.array_list.Managed(Arg),
 
-    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Request {
-        const node = document.getNode(node_id).type.entity;
-
+    pub fn init(node: *const xml_parser.Node, allocator: std.mem.Allocator) !Request {
         var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
-        try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
+        try name.appendSlice(node.type.entity.getAttrib("name") orelse return error.no_name);
 
-        const _type = if (node.getAttrib("type")) |str| blk: {
+        const _type = if (node.type.entity.getAttrib("type")) |str| blk: {
             var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
@@ -162,17 +157,17 @@ pub const Request = struct {
         } else null;
         errdefer if (_type) |s| s.deinit();
 
-        const since = if (node.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
+        const since = if (node.type.entity.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const deprecated_since = if (node.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
+        const deprecated_since = if (node.type.entity.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const description = if (document.find(node_id, "description")) |desc|
-            try Description.init(document, desc, allocator)
+        const description = if (node.find("description")) |desc|
+            try Description.init(desc, allocator)
         else
             null;
         errdefer if (description) |d| d.deinit();
 
-        var args = try processAllChildren(document, node_id, "arg", Arg, allocator);
+        var args = try processAllChildren(node, "arg", Arg, allocator);
         errdefer {
             for (args.items) |i| {
                 i.deinit();
@@ -215,14 +210,12 @@ pub const Event = struct {
     description: ?Description,
     args: std.array_list.Managed(Arg),
 
-    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Event {
-        const node = document.getNode(node_id).type.entity;
-
+    pub fn init(node: *const xml_parser.Node, allocator: std.mem.Allocator) !Event {
         var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
-        try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
+        try name.appendSlice(node.type.entity.getAttrib("name") orelse return error.no_name);
 
-        const _type = if (node.getAttrib("type")) |str| blk: {
+        const _type = if (node.type.entity.getAttrib("type")) |str| blk: {
             var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
@@ -230,17 +223,17 @@ pub const Event = struct {
         } else null;
         errdefer if (_type) |s| s.deinit();
 
-        const since = if (node.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
+        const since = if (node.type.entity.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const deprecated_since = if (node.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
+        const deprecated_since = if (node.type.entity.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const description = if (document.find(node_id, "description")) |desc|
-            try Description.init(document, desc, allocator)
+        const description = if (node.find("description")) |desc|
+            try Description.init(desc, allocator)
         else
             null;
         errdefer if (description) |d| d.deinit();
 
-        var args = try processAllChildren(document, node_id, "arg", Arg, allocator);
+        var args = try processAllChildren(node, "arg", Arg, allocator);
         errdefer {
             for (args.items) |i| {
                 i.deinit();
@@ -282,24 +275,22 @@ pub const Enum = struct {
     description: ?Description,
     entries: std.array_list.Managed(Entry),
 
-    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Enum {
-        const node = document.getNode(node_id).type.entity;
-
+    pub fn init(node: *const xml_parser.Node, allocator: std.mem.Allocator) !Enum {
         var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
-        try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
+        try name.appendSlice(node.type.entity.getAttrib("name") orelse return error.no_name);
 
-        const since = if (node.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
+        const since = if (node.type.entity.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const bitfield = if (node.getAttrib("bitfield")) |str| std.mem.eql(u8, str, "true") else false;
+        const bitfield = if (node.type.entity.getAttrib("bitfield")) |str| std.mem.eql(u8, str, "true") else false;
 
-        const description = if (document.find(node_id, "description")) |desc|
-            try Description.init(document, desc, allocator)
+        const description = if (node.find("description")) |desc|
+            try Description.init(desc, allocator)
         else
             null;
         errdefer if (description) |d| d.deinit();
 
-        var entries = try processAllChildren(document, node_id, "entry", Entry, allocator);
+        var entries = try processAllChildren(node, "entry", Entry, allocator);
         errdefer {
             for (entries.items) |i| {
                 i.deinit();
@@ -338,14 +329,12 @@ pub const Entry = struct {
 
     description: ?Description,
 
-    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Entry {
-        const node = document.getNode(node_id).type.entity;
-
+    pub fn init(node: *const xml_parser.Node, allocator: std.mem.Allocator) !Entry {
         var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
-        try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
+        try name.appendSlice(node.type.entity.getAttrib("name") orelse return error.no_name);
 
-        const value = if (node.getAttrib("value")) |str| blk: {
+        const value = if (node.type.entity.getAttrib("value")) |str| blk: {
             const n = try std.fmt.parseInt(i64, str, 0);
             if (n >= 0) {
                 break :blk @as(u32, @intCast(n));
@@ -354,7 +343,7 @@ pub const Entry = struct {
             }
         } else return error.no_value;
 
-        const summary = if (node.getAttrib("summary")) |str| blk: {
+        const summary = if (node.type.entity.getAttrib("summary")) |str| blk: {
             var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
@@ -362,12 +351,12 @@ pub const Entry = struct {
         } else null;
         errdefer if (summary) |s| s.deinit();
 
-        const since = if (node.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
+        const since = if (node.type.entity.getAttrib("since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const deprecated_since = if (node.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
+        const deprecated_since = if (node.type.entity.getAttrib("deprecated-since")) |str| try std.fmt.parseInt(u32, str, 0) else null;
 
-        const description = if (document.find(node_id, "description")) |desc|
-            try Description.init(document, desc, allocator)
+        const description = if (node.find("description")) |desc|
+            try Description.init(desc, allocator)
         else
             null;
         errdefer if (description) |d| d.deinit();
@@ -403,16 +392,14 @@ pub const Arg = struct {
 
     description: ?Description,
 
-    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Arg {
-        const node = document.getNode(node_id).type.entity;
-
+    pub fn init(node: *const xml_parser.Node, allocator: std.mem.Allocator) !Arg {
         var name = std.array_list.Managed(u8).init(allocator);
         errdefer name.deinit();
-        try name.appendSlice(node.getAttrib("name") orelse return error.no_name);
+        try name.appendSlice(node.type.entity.getAttrib("name") orelse return error.no_name);
 
-        const @"type" = try Type.parse(node.getAttrib("type") orelse return error.no_value);
+        const @"type" = try Type.parse(node.type.entity.getAttrib("type") orelse return error.no_value);
 
-        const summary = if (node.getAttrib("summary")) |str| blk: {
+        const summary = if (node.type.entity.getAttrib("summary")) |str| blk: {
             var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
@@ -420,7 +407,7 @@ pub const Arg = struct {
         } else null;
         errdefer if (summary) |s| s.deinit();
 
-        const interface = if (node.getAttrib("interface")) |str| blk: {
+        const interface = if (node.type.entity.getAttrib("interface")) |str| blk: {
             var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
@@ -428,9 +415,9 @@ pub const Arg = struct {
         } else null;
         errdefer if (interface) |s| s.deinit();
 
-        const allow_null = if (node.getAttrib("allow-null")) |str| std.mem.eql(u8, str, "true") else false;
+        const allow_null = if (node.type.entity.getAttrib("allow-null")) |str| std.mem.eql(u8, str, "true") else false;
 
-        const @"enum" = if (node.getAttrib("enum")) |str| blk: {
+        const @"enum" = if (node.type.entity.getAttrib("enum")) |str| blk: {
             var string = std.array_list.Managed(u8).init(allocator);
             errdefer string.deinit();
             try string.appendSlice(str);
@@ -438,8 +425,8 @@ pub const Arg = struct {
         } else null;
         errdefer if (@"enum") |s| s.deinit();
 
-        const description = if (document.find(node_id, "description")) |desc|
-            try Description.init(document, desc, allocator)
+        const description = if (node.find("description")) |desc|
+            try Description.init(desc, allocator)
         else
             null;
         errdefer if (description) |d| d.deinit();
@@ -477,9 +464,7 @@ pub const Description = struct {
     summary: std.array_list.Managed(u8),
     description: std.array_list.Managed(u8),
 
-    pub fn init(document: xml_parser.Document, node_id: xml_parser.Node.Id, allocator: std.mem.Allocator) !Description {
-        const node = document.getNode(node_id);
-
+    pub fn init(node: *const xml_parser.Node, allocator: std.mem.Allocator) !Description {
         var summary = std.array_list.Managed(u8).init(allocator);
         errdefer summary.deinit();
         try summary.appendSlice(node.type.entity.getAttrib("summary") orelse return error.no_summary);
@@ -487,7 +472,7 @@ pub const Description = struct {
         var description = std.array_list.Managed(u8).init(allocator);
         errdefer description.deinit();
 
-        try description.appendSlice(try document.getText(node_id) orelse "");
+        try description.appendSlice(try node.getText() orelse "");
 
         return Description{
             .summary = summary,
@@ -501,16 +486,16 @@ pub const Description = struct {
     }
 };
 
-fn getTextFrom(document: xml_parser.Document, node: xml_parser.Node.Id, name: []const u8, allocator: std.mem.Allocator) !?std.array_list.Managed(u8) {
+fn getTextFrom(node: *const xml_parser.Node, name: []const u8, allocator: std.mem.Allocator) !?std.array_list.Managed(u8) {
     var s = std.array_list.Managed(u8).init(allocator);
 
-    if (try document.getText(document.find(node, name) orelse return null)) |str| {
+    if (try (node.find(name) orelse return null).getText()) |str| {
         try s.appendSlice(str);
     }
     return s;
 }
 
-fn processAllChildren(document: xml_parser.Document, node: xml_parser.Node.Id, name: []const u8, comptime T: type, allocator: std.mem.Allocator) !std.array_list.Managed(T) {
+fn processAllChildren(node: *const xml_parser.Node, name: []const u8, comptime T: type, allocator: std.mem.Allocator) !std.array_list.Managed(T) {
     var ts = std.array_list.Managed(T).init(allocator);
     errdefer {
         for (ts.items) |i| {
@@ -519,10 +504,10 @@ fn processAllChildren(document: xml_parser.Document, node: xml_parser.Node.Id, n
         ts.deinit();
     }
 
-    var iter = document.findAll(node, name);
+    var iter = node.findAll(name);
 
     while (iter.next()) |t| {
-        try ts.append(try T.init(document, t, allocator));
+        try ts.append(try T.init(t, allocator));
     }
 
     return ts;
