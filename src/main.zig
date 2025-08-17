@@ -108,7 +108,7 @@ pub fn main() !void {
 
         for (0..height) |y| {
             for (0..width) |x| {
-                if ((x + y / 8 * 8) % 16 < 8) {
+                if ((x + y / 32 * 32) % 64 < 32) {
                     pixels[y * width + x] = color;
                 } else {
                     pixels[y * width + x] = Pixel.splat(0);

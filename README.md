@@ -1,6 +1,6 @@
-# Astroids from scratch zig
+# Asteroids from scratch zig
 
-Astroids from scratch is a personal project to explore writing a videogame for linux as low level as possible but using correct(ish) technologys.
+Asteroids from scratch is a personal project to explore writing a videogame for linux as low level as possible but using correct(ish) technologys.
 
 The current plan is to use wayland, a custom built software renderer, and maybe pipewire.
 
