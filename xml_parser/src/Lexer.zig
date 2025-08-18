@@ -153,8 +153,10 @@ fn nextTagToken(self: *Lexer, token_writer: *std.Io.Writer) !Token {
 fn nextTextSection(self: *Lexer, token_writer: *std.Io.Writer) !Token {
     l: switch (true) {
         true => {
-            const text = try self.takeDelimiterExclusive('<');
-            self.reader.seek -= 1;
+            const text = try self.reader.peekDelimiterExclusive('<');
+
+            self.toss(text.len);
+
             try token_writer.writeAll(text);
 
             if (std.mem.eql(u8, self.reader.peek(4) catch "", "<!--")) {

@@ -25,15 +25,15 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .protocol_paths = @as([]const std.Build.LazyPath, &[_]std.Build.LazyPath{
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/unstable/idle-inhibit/idle-inhibit-unstable-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/tearing-control/tearing-control-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/content-type/content-type-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/xdg-system-bell/xdg-system-bell-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/staging/cursor-shape/cursor-shape-v1.xml" },
-            std.Build.LazyPath{ .cwd_relative = "/usr/share/wayland-protocols/stable/tablet/tablet-v2.xml" },
+            systemOrDep(b, "stable/xdg-shell/xdg-shell.xml"),
+            systemOrDep(b, "unstable/xdg-decoration/xdg-decoration-unstable-v1.xml"),
+            systemOrDep(b, "unstable/text-input/text-input-unstable-v3.xml"),
+            systemOrDep(b, "unstable/idle-inhibit/idle-inhibit-unstable-v1.xml"),
+            systemOrDep(b, "staging/tearing-control/tearing-control-v1.xml"),
+            systemOrDep(b, "staging/content-type/content-type-v1.xml"),
+            systemOrDep(b, "staging/xdg-system-bell/xdg-system-bell-v1.xml"),
+            systemOrDep(b, "staging/cursor-shape/cursor-shape-v1.xml"),
+            systemOrDep(b, "stable/tablet/tablet-v2.xml"),
         }),
     });
 
@@ -105,4 +105,18 @@ pub fn build(b: *std.Build) void {
     //
     // Lastly, the Zig build system is relatively simple and self-contained,
     // and reading its source code will allow you to master it.
+}
+
+fn systemOrDep(b: *std.Build, comptime path: []const u8) std.Build.LazyPath {
+    if (std.fs.openFileAbsolute("/usr/share/wayland-protocols/" ++ path, .{}) catch null) |f| {
+        f.close();
+        return std.Build.LazyPath{
+            .cwd_relative = "/usr/share/wayland-protocols/" ++ path,
+        };
+    } else {
+        const wayland_dep = b.lazyDependency("wayland_protocols", .{}) orelse return std.Build.LazyPath{
+            .cwd_relative = "/usr/share/wayland-protocols/" ++ path,
+        };
+        return wayland_dep.path(path);
+    }
 }

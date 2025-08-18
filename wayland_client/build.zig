@@ -30,8 +30,18 @@ pub fn build(b: *std.Build) void {
         std.Build.LazyPath,
         "wayland_protocol_path",
         "path to a valid wayland.xml",
-    ) orelse std.Build.LazyPath{
-        .cwd_relative = "/usr/share/wayland/wayland.xml",
+    ) orelse blk: {
+        if (std.fs.openFileAbsolute("/usr/share/wayland/wayland.xml", .{}) catch null) |f| {
+            f.close();
+            break :blk std.Build.LazyPath{
+                .cwd_relative = "/usr/share/wayland/wayland.xml",
+            };
+        } else {
+            const wayland_dep = b.lazyDependency("wayland", .{}) orelse break :blk std.Build.LazyPath{
+                .cwd_relative = "/usr/share/wayland/wayland.xml",
+            };
+            break :blk wayland_dep.path("protocol/wayland.xml");
+        }
     };
     const protocol_paths = b.option(
         []const std.Build.LazyPath,

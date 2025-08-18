@@ -36,9 +36,12 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
-        .wayland_scanner = .{
-            .path = "wayland_scanner"
-        }
+        .wayland_scanner = .{ .path = "wayland_scanner" },
+        .wayland = .{
+            .url = "https://gitlab.freedesktop.org/wayland/wayland/-/archive/1.24.0/wayland-1.24.0.tar.gz",
+            .hash = "N-V-__8AAGoeGQBEn6KguTJUXrCE0tIRrrXfQX7hYHoKCJwZ",
+            .lazy = true,
+        },
     },
     .paths = .{
         "build.zig",
