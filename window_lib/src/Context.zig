@@ -33,7 +33,7 @@ pub fn init(context: *Context, allocator: std.mem.Allocator) !void {
     try context.registry.bind(wayland_client.protocols.xdg_shell.XdgWmBase, &context.wm_base);
     errdefer context.wm_base.deinit();
 
-    try FrameManager.init(&context.frame_manager, allocator, &context.registry);
+    try FrameManager.init(&context.frame_manager, allocator, context);
     errdefer context.frame_manager.deinit();
 }
 

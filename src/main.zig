@@ -90,19 +90,27 @@ pub fn main() !void {
         rainbow_progress += d_time;
         const color = hsv(rainbow_progress * 25, 1, 1);
 
-        for (0..height) |y| {
-            for (0..width) |x| {
-                if ((x + y / 32 * 32) % 64 < 32) {
-                    frame.pixels[y * width + x] = color;
-                } else {
-                    frame.pixels[y * width + x] = .{
-                        .r = 0,
-                        .g = 0,
-                        .b = 0,
-                    };
-                }
+        @memset(frame.pixels, .{ .r = 0, .g = 0, .b = 0 });
+
+        for (50..100) |y| {
+            for (50..100) |x| {
+                frame.pixels[y * width + x] = color;
             }
         }
+
+        // for (0..height) |y| {
+        //     for (0..width) |x| {
+        //         if ((x + y / 32 * 32) % 64 < 32) {
+        //             frame.pixels[y * width + x] = color;
+        //         } else {
+        //             frame.pixels[y * width + x] = .{
+        //                 .r = 0,
+        //                 .g = 0,
+        //                 .b = 0,
+        //             };
+        //         }
+        //     }
+        // }
 
         try window.presentFrame(frame);
 

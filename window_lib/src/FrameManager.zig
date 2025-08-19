@@ -21,13 +21,17 @@ const BufferInfo = union(enum) {
     },
 };
 
-pub fn init(frame_manager: *FrameManager, allocator: std.mem.Allocator, registry: *wayland_client.Registry) !void {
-    try registry.bind(wayland_client.Shm, &frame_manager.shm);
+pub fn init(frame_manager: *FrameManager, allocator: std.mem.Allocator, context: *Context) !void {
+    frame_manager.* = .{
+        .pool = null,
+        .buffers = .empty,
+        .allocator = allocator,
+        .shm = undefined,
+    };
+    try context.registry.bind(wayland_client.Shm, &frame_manager.shm);
     errdefer frame_manager.shm.deinit();
 
-    frame_manager.pool = null;
-    frame_manager.buffers = .empty;
-    frame_manager.allocator = allocator;
+    try context.display.sync();
 }
 
 pub fn deinit(self: *FrameManager) void {

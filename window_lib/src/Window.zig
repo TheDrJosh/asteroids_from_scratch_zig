@@ -15,6 +15,8 @@ toplevel_surface: wayland_client.protocols.xdg_shell.XdgToplevel,
 
 toplevel_decoration: ?wayland_client.protocols.xdg_decoration_unstable_v1.ZxdgToplevelDecorationV1,
 
+frame_callback: ?wayland_client.protocols.wayland.WlCallback,
+
 current_size: ?Size,
 has_decorations: bool,
 force_client_decorations: bool,
@@ -36,6 +38,19 @@ pub const Size = struct {
 };
 
 pub fn init(window: *Window, context: *Context, config: Config) !void {
+    window.* = .{
+        .frame_callback = null,
+        .should_close = false,
+        .current_size = config.start_size,
+        .has_decorations = config.decorations,
+        .force_client_decorations = config.force_client_decorations,
+        .context = context,
+        .surface = undefined,
+        .xdg_surface = undefined,
+        .toplevel_surface = undefined,
+        .toplevel_decoration = undefined,
+    };
+
     try context.compositor.createSurface(&window.surface);
 
     try context.wm_base.getXdgSurface(&window.xdg_surface, &window.surface);
@@ -65,7 +80,6 @@ pub fn init(window: *Window, context: *Context, config: Config) !void {
     if (toplevel_decoration_manager) |*manager| {
         defer manager.deinit();
 
-        window.toplevel_decoration = undefined;
         try manager.getToplevelDecoration(&window.toplevel_decoration.?, &window.toplevel_surface);
 
         if (config.decorations) {
@@ -80,15 +94,12 @@ pub fn init(window: *Window, context: *Context, config: Config) !void {
     }
 
     try window.surface.commit();
-
-    window.should_close = false;
-    window.current_size = config.start_size;
-    window.has_decorations = config.decorations;
-    window.force_client_decorations = config.force_client_decorations;
-    window.context = context;
 }
 
 pub fn deinit(self: *Window) void {
+    if (self.frame_callback) |*c| {
+        c.deinit();
+    }
     if (self.toplevel_decoration) |*decor| {
         decor.deinit();
     }
@@ -112,9 +123,20 @@ pub fn pollEvents(self: *const Window) !void {
     _ = self;
 }
 
-pub fn presentFrame(self: *const Window, frame: anytype) !void { //FrameManager.Frame(FrameManager.PixelXrgb8888)
+pub fn presentFrame(self: *Window, frame: anytype) !void { //FrameManager.Frame(FrameManager.PixelXrgb8888)
+
+    if (self.frame_callback) |*c| {
+        while (try c.nextDone() == null) {}
+    }
+
     try self.surface.attach(&(try frame.getBuffer()).wl_buffer, 0, 0);
     try self.surface.damage(0, 0, @intCast(frame.width), @intCast(frame.height()));
+    if (self.frame_callback) |*c| {
+        c.deinit();
+    }
+    self.frame_callback = undefined;
+    try self.surface.frame(&self.frame_callback.?);
+
     try self.surface.commit();
 
     while (try self.context.wm_base.nextPing()) |ping| {
