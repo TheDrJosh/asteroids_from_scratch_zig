@@ -3,9 +3,11 @@ const std = @import("std");
 const wayland_client = @import("wayland_client");
 
 const Context = @import("Context.zig");
-const Frame = @import("Frame.zig");
+const FrameManager = @import("FrameManager.zig");
 
 const Window = @This();
+
+context: *Context,
 
 surface: *wayland_client.protocols.wayland.WlSurface,
 xdg_surface: *wayland_client.protocols.xdg_shell.XdgSurface,
@@ -73,6 +75,7 @@ pub fn init(context: *Context, config: Config) !Window {
     try surface.commit();
 
     return .{
+        .context = context,
         .surface = surface,
         .xdg_surface = xdg_surface,
         .toplevel_surface = toplevel_surface,
@@ -108,9 +111,15 @@ pub fn pollEvents(self: *const Window) !void {
     _ = self;
 }
 
-pub fn presentFrame(self: *const Window, frame: Frame) !void {
-    _ = frame;
-    while (try self.wm_base.nextPing()) |ping| {
-        try self.wm_base.pong(ping.serial);
+pub fn presentFrame(self: *const Window, frame: anytype) !void {
+    if (frame.getBuffer().*) |*b| {
+        try self.surface.attach(b.wl_buffer, 0, 0);
+        try self.surface.damage(0, 0, @intCast(frame.width), @intCast(frame.height()));
+        try self.surface.commit();
+    }
+
+    while (try self.context.wm_base.nextPing()) |ping| {
+        std.debug.print("pong\n", .{});
+        try self.context.wm_base.pong(ping.serial);
     }
 }

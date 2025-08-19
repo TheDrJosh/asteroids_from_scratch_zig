@@ -115,6 +115,12 @@ pub fn processEnums(tab_writer: *TabWriter, interface: wayland.Interface, alloca
         } else {
             try writer.writeAll(" = enum(u32) {");
 
+            std.mem.sortUnstable(wayland.Entry, @"enum".entries.items, {}, struct {
+                pub fn less_than(_: void, a: wayland.Entry, b: wayland.Entry) bool {
+                    return a.value < b.value;
+                }
+            }.less_than);
+
             for (@"enum".entries.items) |entry| {
                 var comment = std.array_list.Managed(u8).init(allocator);
                 defer comment.deinit();

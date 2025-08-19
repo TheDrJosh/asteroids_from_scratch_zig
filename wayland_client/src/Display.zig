@@ -28,15 +28,15 @@ pub fn deinit(self: *const Display) void {
     self.runtime.allocator.destroy(self);
 }
 
-pub fn sync(self: *const Display) !*protocols.wayland.WlCallback {
+pub fn sync(self: *const Display) !void {
     const callback_id = self.runtime.getId();
     const callback = try protocols.wayland.WlCallback.init(callback_id, self.runtime);
-    errdefer callback.deinit();
+    defer callback.deinit();
     try self.runtime.sendRequest(Display.object_id, 0, .{
         callback_id,
     });
 
-    return callback;
+    while (try callback.nextDone() == null) {}
 }
 
 pub fn getRegistry(self: *const Display) !*Registry {
@@ -48,10 +48,7 @@ pub fn getRegistry(self: *const Display) !*Registry {
         registry_id,
     });
 
-    const c = try self.sync();
-    defer c.deinit();
-
-    while ((try c.nextDone()) == null) {}
+    try self.sync();
 
     return registry;
 }
@@ -59,7 +56,7 @@ pub fn getRegistry(self: *const Display) !*Registry {
 pub fn handleEvent(self: *Display, msg: Message) void {
     switch (msg.info.opcode) {
         0 => {
-            const parsed_msg = msg.parse(struct { object_id: types.ObjectId, code: u32, message: types.String }, self.runtime) catch unreachable;
+            const parsed_msg = msg.parse(protocols.wayland.WlDisplay.ErrorEvent, self.runtime) catch unreachable;
             defer parsed_msg.args.deinit();
 
             self.runtime.object_register_mutex.lock();
@@ -80,7 +77,7 @@ pub fn handleEvent(self: *Display, msg: Message) void {
             );
         },
         1 => {
-            const parsed_msg = msg.parse(struct { id: u32 }, self.runtime) catch unreachable;
+            const parsed_msg = msg.parse(protocols.wayland.WlDisplay.DeleteIdEvent, self.runtime) catch unreachable;
 
             self.runtime.unregisterObject(parsed_msg.args.id);
 
@@ -95,5 +92,11 @@ pub fn handleEvent(self: *Display, msg: Message) void {
 
 pub fn handleError(self: *Display, code: u32, message: []const u8) void {
     _ = self;
-    std.debug.panic("Wayland Error recived on Display(code: {}, message: {s})", .{ @as(protocols.wayland.WlDisplay.Error, @enumFromInt(code)), message });
+    std.debug.panic(
+        "Wayland Error recived on Display(code: {}, message: {s})",
+        .{
+            @as(protocols.wayland.WlDisplay.Error, @enumFromInt(code)),
+            message,
+        },
+    );
 }

@@ -11,17 +11,17 @@ pub fn processEvents(tab_writer: *TabWriter, interface: wayland.Interface, resol
 
     for (interface.events.items) |event| {
         has_event = true;
-        try utils.writeFormatedDocComment(
-            writer,
-            event.description,
-            null,
-            null,
-            event.since,
-            event.deprecated_since,
-            allocator,
-        );
 
         if (event.args.items.len != 0) {
+            try utils.writeFormatedDocComment(
+                writer,
+                event.description,
+                null,
+                null,
+                event.since,
+                event.deprecated_since,
+                allocator,
+            );
             try writer.writeAll("pub const ");
             try utils.writePascalCase(writer, event.name.items);
             try writer.writeAll("Event = ");

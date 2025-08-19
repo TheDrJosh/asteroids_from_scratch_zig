@@ -95,7 +95,7 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
                     try writer.writeAll("[]const u8");
                 },
                 .fd => {
-                    try writer.writeAll("std.posix.fd_t");
+                    try writer.writeAll("std.fs.File");
                 },
             }
             try writer.writeAll(",");
@@ -185,9 +185,6 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
 
                         try writer.writeAll(".version },");
                     }
-                },
-                .fd => {
-                    try writer.print("\nstd.fs.File{{ .handle = {s} }},", .{arg.name.items});
                 },
                 else => {
                     try writer.print("\n{s},", .{arg.name.items});

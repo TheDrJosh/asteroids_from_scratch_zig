@@ -3,6 +3,9 @@ pub const Runtime = @import("Runtime.zig");
 pub const protocols = @import("protocols");
 pub const Display = @import("Display.zig");
 pub const Registry = @import("Registry.zig");
+pub const Shm = @import("Shm.zig");
+pub const ShmPool = @import("ShmPool.zig");
+pub const Buffer = @import("Buffer.zig");
 
 test "callback sync" {
     const std = @import("std");
