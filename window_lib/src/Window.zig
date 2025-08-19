@@ -111,12 +111,10 @@ pub fn pollEvents(self: *const Window) !void {
     _ = self;
 }
 
-pub fn presentFrame(self: *const Window, frame: anytype) !void {
-    if (frame.getBuffer().*) |*b| {
-        try self.surface.attach(b.wl_buffer, 0, 0);
-        try self.surface.damage(0, 0, @intCast(frame.width), @intCast(frame.height()));
-        try self.surface.commit();
-    }
+pub fn presentFrame(self: *const Window, frame: anytype) !void { //FrameManager.Frame(FrameManager.PixelXrgb8888)
+    try self.surface.attach((try frame.getBuffer()).wl_buffer, 0, 0);
+    try self.surface.damage(0, 0, @intCast(frame.width), @intCast(frame.height()));
+    try self.surface.commit();
 
     while (try self.context.wm_base.nextPing()) |ping| {
         std.debug.print("pong\n", .{});

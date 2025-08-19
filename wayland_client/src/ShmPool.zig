@@ -69,10 +69,11 @@ pub fn createBuffer(
 }
 
 pub fn resize(
-    self: *const ShmPool,
+    self: *ShmPool,
     /// new size of the pool, in bytes
-    size: i32,
+    size: usize,
 ) !void {
+    std.debug.print("resize\n", .{});
     std.posix.munmap(self.data);
     try self.fd.setEndPos(size);
     self.data = try std.posix.mmap(
@@ -87,7 +88,7 @@ pub fn resize(
     );
 
     try self.runtime.sendRequest(self.object_id, 2, .{
-        size,
+        @as(i32, @intCast(size)),
     });
 }
 

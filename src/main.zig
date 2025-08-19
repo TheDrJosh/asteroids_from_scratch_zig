@@ -79,7 +79,7 @@ pub fn main() !void {
             height,
             window_lib.FrameManager.PixelXrgb8888,
         );
-        defer frame.deinit();
+        errdefer frame.forceDestroy();
 
         const color = hsv(@as(f64, @floatFromInt(frame_number)) / 2, 1, 1);
 

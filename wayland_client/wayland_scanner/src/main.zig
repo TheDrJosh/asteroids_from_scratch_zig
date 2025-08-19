@@ -47,7 +47,7 @@ pub fn main() !void {
         // defer input_file.close();
 
         //TODO test diffent buffer sizes
-        var buffer: [8192 * 16]u8 = undefined;
+        var buffer: [1024 * 8]u8 = undefined;
 
         var input_file_reader = input_file.reader(&buffer);
 

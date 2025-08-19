@@ -10,11 +10,15 @@ pool: ?*wayland_client.ShmPool,
 buffers: std.ArrayList(BufferInfo),
 allocator: std.mem.Allocator,
 
-const BufferInfo = struct {
-    id: u32,
-    offset: usize,
-    size: usize,
-    buffer: ?wayland_client.Buffer,
+const BufferInfo = union(enum) {
+    empty: struct {
+        size: usize,
+    },
+    filled: struct {
+        id: u32,
+        size: usize,
+        buffer: wayland_client.Buffer,
+    },
 };
 
 pub fn init(allocator: std.mem.Allocator, registry: *wayland_client.Registry) !FrameManager {
@@ -29,11 +33,21 @@ pub fn init(allocator: std.mem.Allocator, registry: *wayland_client.Registry) !F
     };
 }
 
-pub fn deinit(self: *const FrameManager) void {
+pub fn deinit(self: *FrameManager) void {
+    
+    for (self.buffers.items) |info| {
+        switch (info) {
+            .filled => |filled_info| {
+                filled_info.buffer.deinit();
+            },
+            .empty => {},
+        }
+    }
+
+    self.buffers.deinit(self.allocator);
     if (self.pool) |pool| {
         pool.deinit();
     }
-    self.buffers.deinit(self.allocator);
     self.shm.deinit();
 }
 
@@ -60,10 +74,11 @@ pub fn createFrame(self: *FrameManager, width: u32, height: u32, comptime Pixel:
         );
 
         try self.buffers.append(self.allocator, .{
-            .id = buffer.wl_buffer.object_id,
-            .offset = 0,
-            .size = width * height * @sizeOf(Pixel),
-            .buffer = buffer,
+            .filled = .{
+                .id = buffer.wl_buffer.object_id,
+                .size = width * height * @sizeOf(Pixel),
+                .buffer = buffer,
+            },
         });
 
         return .{
@@ -73,16 +88,107 @@ pub fn createFrame(self: *FrameManager, width: u32, height: u32, comptime Pixel:
             .frame_manager = self,
         };
     } else {
+        for (self.buffers.items) |*buf_info| {
+            switch (buf_info.*) {
+                .filled => |*filled_buf_info| {
+                    if (filled_buf_info.buffer.isReleased()) {
+                        filled_buf_info.buffer.deinit();
+                        buf_info.* = .{
+                            .empty = .{
+                                .size = filled_buf_info.size,
+                            },
+                        };
+                    }
+                },
+                .empty => {},
+            }
+        }
 
-        
-        @panic("TODO");
+        {
+            var i: u32 = 0;
+            while (i < self.buffers.items.len - 1) {
+                switch (self.buffers.items[i]) {
+                    .filled => {
+                        i += 1;
+                    },
+                    .empty => |*info| {
+                        switch (self.buffers.items[i + 1]) {
+                            .filled => {
+                                i += 2;
+                            },
+                            .empty => |e| {
+                                info.size += e.size;
+                                _ = self.buffers.orderedRemove(i + 1);
+                            },
+                        }
+                    },
+                }
+            }
+        }
+
+        var offset: usize = 0;
+        for (0..self.buffers.items.len) |i| {
+            switch (self.buffers.items[i]) {
+                .empty => |info| {
+                    if (info.size >= (width * height * @sizeOf(Pixel))) {
+                        const buffer = try self.pool.?.createBuffer(
+                            @intCast(offset),
+                            @intCast(width),
+                            @intCast(height),
+                            @intCast(width * @sizeOf(Pixel)),
+                            Pixel.format,
+                        );
+                        self.buffers.items[i] = .{
+                            .filled = .{
+                                .id = buffer.wl_buffer.object_id,
+                                .size = width * height * @sizeOf(Pixel),
+                                .buffer = buffer,
+                            },
+                        };
+                        if (info.size != (width * height * @sizeOf(Pixel))) {
+                            try self.buffers.insert(self.allocator, i + 1, .{
+                                .empty = .{
+                                    .size = info.size - (width * height * @sizeOf(Pixel)),
+                                },
+                            });
+                        }
+                        return .{
+                            .pixels = std.mem.bytesAsSlice(Pixel, buffer.data),
+                            .width = width,
+                            .buffer_id = buffer.wl_buffer.object_id,
+                            .frame_manager = self,
+                        };
+                    }
+                    offset += info.size;
+                },
+                .filled => |info| {
+                    offset += info.size;
+                },
+            }
+        }
+
+        try self.pool.?.resize(self.pool.?.data.len + width * height * @sizeOf(Pixel));
+        try self.buffers.append(self.allocator, .{
+            .empty = .{
+                .size = width * height * @sizeOf(Pixel),
+            },
+        });
+
+        return try self.createFrame(width, height, Pixel);
+
+        // @panic("TODO");
     }
 }
 
-pub fn getBuffer(self: *FrameManager, id: u32) ?*?wayland_client.Buffer {
+pub fn getBuffer(self: *FrameManager, id: u32) ?*wayland_client.Buffer {
     for (self.buffers.items) |*b| {
-        if (b.id == id) {
-            return &b.buffer;
+        switch (b.*) {
+            .filled => |*f| {
+                if (f.id == id) {
+                    return &f.buffer;
+                }
+            },
+            .empty => {},
         }
     }
     return null;
@@ -101,16 +207,13 @@ pub fn Frame(comptime Pixel: type) type {
             return @intCast(self.pixels.len / self.width);
         }
 
-        pub fn deinit(self: *const Self) void {
-            const buf = self.getBuffer();
-            if (buf.*) |*b| {
-                b.deinit();
-            }
-            buf.* = null;
+        pub fn forceDestroy(self: *const Self) void {
+            const buf = self.getBuffer() catch unreachable;
+            buf.is_released = true;
         }
 
-        pub fn getBuffer(self: *const Self) *?wayland_client.Buffer {
-            return self.frame_manager.getBuffer(self.buffer_id) orelse unreachable;
+        pub fn getBuffer(self: *const Self) !*wayland_client.Buffer {
+            return self.frame_manager.getBuffer(self.buffer_id) orelse return error.buffer_destroyed;
         }
     };
 }

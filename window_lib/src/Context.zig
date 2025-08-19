@@ -53,7 +53,8 @@ pub fn init(allocator: std.mem.Allocator) !Context {
     };
 }
 
-pub fn deinit(self: *const Context) void {
+pub fn deinit(self: *Context) void {
+    self.frame_manager.deinit();
     self.compositor.deinit();
     self.wm_base.deinit();
     self.registry.deinit();
