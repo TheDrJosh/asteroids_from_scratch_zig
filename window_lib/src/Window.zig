@@ -9,11 +9,11 @@ const Window = @This();
 
 context: *Context,
 
-surface: *wayland_client.protocols.wayland.WlSurface,
-xdg_surface: *wayland_client.protocols.xdg_shell.XdgSurface,
-toplevel_surface: *wayland_client.protocols.xdg_shell.XdgToplevel,
+surface: wayland_client.protocols.wayland.WlSurface,
+xdg_surface: wayland_client.protocols.xdg_shell.XdgSurface,
+toplevel_surface: wayland_client.protocols.xdg_shell.XdgToplevel,
 
-toplevel_decoration: ?*wayland_client.protocols.xdg_decoration_unstable_v1.ZxdgToplevelDecorationV1,
+toplevel_decoration: ?wayland_client.protocols.xdg_decoration_unstable_v1.ZxdgToplevelDecorationV1,
 
 current_size: ?Size,
 has_decorations: bool,
@@ -35,60 +35,61 @@ pub const Size = struct {
     height: u32,
 };
 
-pub fn init(context: *Context, config: Config) !Window {
-    const surface = try context.compositor.createSurface();
+pub fn init(window: *Window, context: *Context, config: Config) !void {
+    try context.compositor.createSurface(&window.surface);
 
-    const xdg_surface = try context.wm_base.getXdgSurface(surface);
+    try context.wm_base.getXdgSurface(&window.xdg_surface, &window.surface);
 
-    const toplevel_surface = try xdg_surface.getToplevel();
+    try window.xdg_surface.getToplevel(&window.toplevel_surface);
 
-    try toplevel_surface.setTitle(config.title);
+    try window.toplevel_surface.setTitle(config.title);
 
     if (config.max_size) |max_size| {
-        try toplevel_surface.setMaxSize(@intCast(max_size.width), @intCast(max_size.height));
+        try window.toplevel_surface.setMaxSize(@intCast(max_size.width), @intCast(max_size.height));
     }
     if (config.min_size) |min_size| {
-        try toplevel_surface.setMinSize(@intCast(min_size.width), @intCast(min_size.height));
+        try window.toplevel_surface.setMinSize(@intCast(min_size.width), @intCast(min_size.height));
     }
     if (config.app_id) |app_id| {
-        try toplevel_surface.setAppId(app_id);
+        try window.toplevel_surface.setAppId(app_id);
     }
 
-    const toplevel_decoration = if (try context.registry.bind(
+    var toplevel_decoration_manager: ?wayland_client.protocols.xdg_decoration_unstable_v1.ZxdgDecorationManagerV1 = undefined;
+    context.registry.bind(
         wayland_client.protocols.xdg_decoration_unstable_v1.ZxdgDecorationManagerV1,
-    )) |manager| blk: {
+        &toplevel_decoration_manager.?,
+    ) catch |e| if (e == error.global_not_found) {
+        toplevel_decoration_manager = null;
+    } else return e;
+
+    if (toplevel_decoration_manager) |*manager| {
         defer manager.deinit();
 
-        const decor = try manager.getToplevelDecoration(toplevel_surface);
+        window.toplevel_decoration = undefined;
+        try manager.getToplevelDecoration(&window.toplevel_decoration.?, &window.toplevel_surface);
 
         if (config.decorations) {
             if (config.force_client_decorations) {
-                try decor.setMode(.client_side);
+                try window.toplevel_decoration.?.setMode(.client_side);
             } else {
-                try decor.setMode(.server_side);
+                try window.toplevel_decoration.?.setMode(.server_side);
             }
         }
+    } else {
+        window.toplevel_decoration = null;
+    }
 
-        break :blk decor;
-    } else null;
+    try window.surface.commit();
 
-    try surface.commit();
-
-    return .{
-        .context = context,
-        .surface = surface,
-        .xdg_surface = xdg_surface,
-        .toplevel_surface = toplevel_surface,
-        .current_size = config.start_size,
-        .has_decorations = config.decorations,
-        .force_client_decorations = config.force_client_decorations,
-        .toplevel_decoration = toplevel_decoration,
-        .should_close = false,
-    };
+    window.should_close = false;
+    window.current_size = config.start_size;
+    window.has_decorations = config.decorations;
+    window.force_client_decorations = config.force_client_decorations;
+    window.context = context;
 }
 
-pub fn deinit(self: *const Window) void {
-    if (self.toplevel_decoration) |decor| {
+pub fn deinit(self: *Window) void {
+    if (self.toplevel_decoration) |*decor| {
         decor.deinit();
     }
     self.toplevel_surface.deinit();
@@ -112,7 +113,7 @@ pub fn pollEvents(self: *const Window) !void {
 }
 
 pub fn presentFrame(self: *const Window, frame: anytype) !void { //FrameManager.Frame(FrameManager.PixelXrgb8888)
-    try self.surface.attach((try frame.getBuffer()).wl_buffer, 0, 0);
+    try self.surface.attach(&(try frame.getBuffer()).wl_buffer, 0, 0);
     try self.surface.damage(0, 0, @intCast(frame.width), @intCast(frame.height()));
     try self.surface.commit();
 

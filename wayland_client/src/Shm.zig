@@ -17,8 +17,7 @@ formats_mutex: std.Thread.Mutex,
 pub const interface = "wl_shm";
 pub const version = 2;
 
-pub fn init(object_id: types.ObjectId, runtime: *Runtime) !*Shm {
-    const object = try runtime.allocator.create(Shm);
+pub fn init(object: *Shm, object_id: types.ObjectId, runtime: *Runtime) !void {
     object.* = .{
         .object_id = object_id,
         .runtime = runtime,
@@ -26,13 +25,11 @@ pub fn init(object_id: types.ObjectId, runtime: *Runtime) !*Shm {
         .formats_mutex = .{},
     };
     try runtime.registerObject(object);
-    return object;
 }
 
 pub fn deinit(self: *Shm) void {
     self.runtime.unregisterObject(self.object_id);
     self.runtime.sendRequest(self.object_id, 1, .{}) catch unreachable;
-    self.runtime.allocator.destroy(self);
 }
 
 pub fn supportsFormat(self: *Shm, format: Format) bool {
@@ -41,7 +38,7 @@ pub fn supportsFormat(self: *Shm, format: Format) bool {
     return self.formats.contains(format);
 }
 
-pub fn createPool(self: *Shm, name: [:0]u8, size: u32) !*ShmPool {
+pub fn createPool(self: *Shm, pool: *ShmPool, name: [:0]u8, size: u32) !void {
     const pool_id = self.runtime.getId();
 
     const fd = std.fs.File{
@@ -61,7 +58,7 @@ pub fn createPool(self: *Shm, name: [:0]u8, size: u32) !*ShmPool {
     );
     errdefer std.posix.munmap(data);
 
-    const pool = try ShmPool.init(pool_id, self.runtime, fd, data);
+    try ShmPool.init(pool, pool_id, self.runtime, fd, data);
     errdefer pool.deinit();
 
     try self.runtime.sendRequest(
@@ -73,8 +70,6 @@ pub fn createPool(self: *Shm, name: [:0]u8, size: u32) !*ShmPool {
             size,
         },
     );
-
-    return pool;
 }
 
 fn createShmFile(name: [:0]u8) !std.posix.fd_t {

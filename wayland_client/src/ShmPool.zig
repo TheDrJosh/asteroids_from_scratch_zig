@@ -15,8 +15,7 @@ runtime: *Runtime,
 fd: std.fs.File,
 data: []align(4096) u8,
 
-pub fn init(object_id: types.ObjectId, runtime: *Runtime, fd: std.fs.File, data: []align(4096) u8) !*ShmPool {
-    const object = try runtime.allocator.create(ShmPool);
+pub fn init(object: *ShmPool, object_id: types.ObjectId, runtime: *Runtime, fd: std.fs.File, data: []align(4096) u8) !void {
     object.* = .{
         .object_id = object_id,
         .runtime = runtime,
@@ -24,7 +23,6 @@ pub fn init(object_id: types.ObjectId, runtime: *Runtime, fd: std.fs.File, data:
         .data = data,
     };
     try runtime.registerObject(object);
-    return object;
 }
 pub fn deinit(self: *ShmPool) void {
     self.runtime.unregisterObject(self.object_id);
@@ -32,12 +30,11 @@ pub fn deinit(self: *ShmPool) void {
 
     self.fd.close();
     std.posix.munmap(self.data);
-
-    self.runtime.allocator.destroy(self);
 }
 
 pub fn createBuffer(
     self: *const ShmPool,
+    buffer: *Buffer,
     /// buffer byte offset within the pool
     offset: i32,
     /// buffer width, in pixels
@@ -48,9 +45,9 @@ pub fn createBuffer(
     stride: i32,
     /// buffer pixel format
     format: protocols.wayland.WlShm.Format,
-) !Buffer {
+) !void {
     const buffer_id = self.runtime.getId();
-    const buffer = try Buffer.init(buffer_id, self.runtime, self.data[@intCast(offset)..][0..@intCast(stride * height)]);
+    try Buffer.init(buffer, buffer_id, self.runtime, self.data[@intCast(offset)..][0..@intCast(stride * height)]);
     errdefer buffer.deinit();
     try self.runtime.sendRequest(
         self.object_id,
@@ -64,8 +61,6 @@ pub fn createBuffer(
             format,
         },
     );
-
-    return buffer;
 }
 
 pub fn resize(

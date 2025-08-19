@@ -19,8 +19,7 @@ const GlobalInfo = struct {
 
 pub const interface = "wl_registry";
 
-pub fn init(object_id: types.ObjectId, runtime: *Runtime) !*Registry {
-    const registry = try runtime.allocator.create(Registry);
+pub fn init(registry: *Registry, object_id: types.ObjectId, runtime: *Runtime) !void {
     registry.* = .{
         .object_id = object_id,
         .runtime = runtime,
@@ -28,7 +27,6 @@ pub fn init(object_id: types.ObjectId, runtime: *Runtime) !*Registry {
         .globals_mutex = .{},
     };
     try runtime.registerObject(registry);
-    return registry;
 }
 
 pub fn deinit(self: *Registry) void {
@@ -41,29 +39,26 @@ pub fn deinit(self: *Registry) void {
     }
     self.globals.deinit(self.runtime.allocator);
     self.globals_mutex.unlock();
-
-    self.runtime.allocator.destroy(self);
 }
 
-pub fn bind(self: *Registry, T: type) !?*T {
+pub fn bind(self: *Registry, T: type, global: *T) !void {
     self.globals_mutex.lock();
     defer self.globals_mutex.unlock();
 
     for (self.globals.items) |global_info| {
         if (std.mem.eql(u8, global_info.interface.data(), T.interface)) {
             const global_id = self.runtime.getId();
-            const global = try T.init(global_id, self.runtime);
+            try T.init(global, global_id, self.runtime);
             try self.runtime.sendRequest(self.object_id, 0, .{ global_info.name, types.NewId{
                 .id = global_id,
                 .interface = .{ .static = T.interface },
                 .version = global_info.version,
             } });
-
-            return global;
+            return;
         }
     }
 
-    return null;
+    return error.global_not_found;
 }
 
 pub fn handleEvent(self: *Registry, msg: Message) void {

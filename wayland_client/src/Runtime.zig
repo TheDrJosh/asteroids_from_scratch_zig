@@ -69,8 +69,8 @@ pub fn deinit(self: *Runtime) void {
     self.object_register.deinit();
 }
 
-pub fn display(self: *Runtime) !*Display {
-    return try Display.init(self);
+pub fn display(self: *Runtime, d: *Display) !void {
+    try Display.init(d, self);
 }
 
 pub fn getId(self: *Runtime) types.ObjectId {

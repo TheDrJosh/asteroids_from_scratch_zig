@@ -5,8 +5,8 @@ const wayland_client = @import("wayland_client");
 
 const FrameManager = @This();
 
-shm: *wayland_client.Shm,
-pool: ?*wayland_client.ShmPool,
+shm: wayland_client.Shm,
+pool: ?wayland_client.ShmPool,
 buffers: std.ArrayList(BufferInfo),
 allocator: std.mem.Allocator,
 
@@ -17,35 +17,32 @@ const BufferInfo = union(enum) {
     filled: struct {
         id: u32,
         size: usize,
-        buffer: wayland_client.Buffer,
+        buffer: *wayland_client.Buffer,
     },
 };
 
-pub fn init(allocator: std.mem.Allocator, registry: *wayland_client.Registry) !FrameManager {
-    const shm = try registry.bind(wayland_client.Shm) orelse unreachable;
-    errdefer shm.deinit();
+pub fn init(frame_manager: *FrameManager, allocator: std.mem.Allocator, registry: *wayland_client.Registry) !void {
+    try registry.bind(wayland_client.Shm, &frame_manager.shm);
+    errdefer frame_manager.shm.deinit();
 
-    return .{
-        .shm = shm,
-        .pool = null,
-        .buffers = .empty,
-        .allocator = allocator,
-    };
+    frame_manager.pool = null;
+    frame_manager.buffers = .empty;
+    frame_manager.allocator = allocator;
 }
 
 pub fn deinit(self: *FrameManager) void {
-    
-    for (self.buffers.items) |info| {
-        switch (info) {
-            .filled => |filled_info| {
+    for (self.buffers.items) |*info| {
+        switch (info.*) {
+            .filled => |*filled_info| {
                 filled_info.buffer.deinit();
+                self.allocator.destroy(filled_info.buffer);
             },
             .empty => {},
         }
     }
 
     self.buffers.deinit(self.allocator);
-    if (self.pool) |pool| {
+    if (self.pool) |*pool| {
         pool.deinit();
     }
     self.shm.deinit();
@@ -63,9 +60,12 @@ pub fn createFrame(self: *FrameManager, width: u32, height: u32, comptime Pixel:
         var name_buf = [1]u8{0} ** 17;
         const name = try std.fmt.bufPrintZ(&name_buf, "/wl_shm-{X:0>8}", .{rand});
 
-        self.pool = try self.shm.createPool(name, width * height * @sizeOf(Pixel));
+        self.pool = undefined;
+        try self.shm.createPool(&self.pool.?, name, width * height * @sizeOf(Pixel));
 
-        const buffer = try self.pool.?.createBuffer(
+        const buffer = try self.allocator.create(wayland_client.Buffer);
+        try self.pool.?.createBuffer(
+            buffer,
             0,
             @intCast(width),
             @intCast(height),
@@ -93,6 +93,7 @@ pub fn createFrame(self: *FrameManager, width: u32, height: u32, comptime Pixel:
                 .filled => |*filled_buf_info| {
                     if (filled_buf_info.buffer.isReleased()) {
                         filled_buf_info.buffer.deinit();
+                        self.allocator.destroy(filled_buf_info.buffer);
                         buf_info.* = .{
                             .empty = .{
                                 .size = filled_buf_info.size,
@@ -131,7 +132,9 @@ pub fn createFrame(self: *FrameManager, width: u32, height: u32, comptime Pixel:
             switch (self.buffers.items[i]) {
                 .empty => |info| {
                     if (info.size >= (width * height * @sizeOf(Pixel))) {
-                        const buffer = try self.pool.?.createBuffer(
+                        const buffer = try self.allocator.create(wayland_client.Buffer);
+                        try self.pool.?.createBuffer(
+                            buffer,
                             @intCast(offset),
                             @intCast(width),
                             @intCast(height),
@@ -185,7 +188,7 @@ pub fn getBuffer(self: *FrameManager, id: u32) ?*wayland_client.Buffer {
         switch (b.*) {
             .filled => |*f| {
                 if (f.id == id) {
-                    return &f.buffer;
+                    return f.buffer;
                 }
             },
             .empty => {},

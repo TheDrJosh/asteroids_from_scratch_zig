@@ -32,24 +32,24 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
 
         try writer.writeAll(",");
 
-        var new_ids = std.array_list.Managed(wayland.Arg).init(allocator);
-        defer new_ids.deinit();
+        // var new_ids = std.array_list.Managed(wayland.Arg).init(allocator);
+        // defer new_ids.deinit();
 
         for (request.args.items) |arg| {
-            if (arg.type == .new_id) {
-                try new_ids.append(arg);
-            }
+            // if (arg.type == .new_id) {
+            //     try new_ids.append(arg);
+            // }
 
-            if (arg.type == .new_id and arg.interface != null) {
-                continue;
-            }
+            // if (arg.type == .new_id and arg.interface != null) {
+            //     continue;
+            // }
 
             try utils.writeFormatedDocComment(writer, arg.description, arg.summary, null, null, null, allocator);
 
-            if (arg.type != .new_id) {
-                try writer.writeAll(arg.name.items);
-            } else {
+            if (arg.type == .new_id and arg.interface == null) {
                 try utils.writePascalCase(writer, arg.name.items);
+            } else {
+                try writer.writeAll(arg.name.items);
             }
             try writer.writeAll(": ");
 
@@ -87,9 +87,16 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
                     }
                 },
                 .new_id => {
-                    try writer.writeAll("type,\n");
-                    try writer.writeAll(arg.name.items);
-                    try writer.writeAll("_version: ?u32");
+                    if (arg.interface) |inter| {
+                        try writer.writeAll("*");
+                        try resolver.writeResolvedInterface(writer, inter.items);
+                    } else {
+                        try writer.writeAll("type,\n");
+                        try writer.writeAll(arg.name.items);
+                        try writer.writeAll("");
+                        try writer.print("_version: ?u32, {s}: ", .{arg.name.items});
+                        try utils.writePascalCase(writer, arg.name.items);
+                    }
                 },
                 .array => {
                     try writer.writeAll("[]const u8");
@@ -105,62 +112,65 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
 
         try writer.writeAll("\n) !");
 
-        switch (new_ids.items.len) {
-            0 => {
-                try writer.writeAll("void");
-            },
-            1 => {
-                if (new_ids.items[0].interface) |inter| {
-                    try writer.writeByte('*');
-                    try utils.writePascalCase(writer, inter.items);
-                } else {
-                    try utils.writePascalCase(writer, new_ids.items[0].name.items);
-                }
-            },
-            else => {
-                try writer.writeAll("struct {");
-                tab_writer.indent += 1;
+        try writer.writeAll("void");
 
-                for (new_ids.items) |new_id| {
-                    try utils.writeFormatedDocComment(
-                        writer,
-                        new_id.description,
-                        new_id.summary,
-                        null,
-                        null,
-                        null,
-                        allocator,
-                    );
-                    try writer.writeAll(new_id.name.items);
-                    try writer.writeAll(": ");
-                    if (new_id.interface) |inter| {
-                        try writer.writeByte('*');
-                        try resolver.writeResolvedInterface(writer, inter.items);
-                    } else {
-                        try utils.writePascalCase(writer, new_id.name.items);
-                    }
-                }
+        // switch (new_ids.items.len) {
+        //     0 => {
+        //         try writer.writeAll("void");
+        //     },
+        //     1 => {
+        //         if (new_ids.items[0].interface) |inter| {
+        //             try writer.writeByte('*');
+        //             try utils.writePascalCase(writer, inter.items);
+        //         } else {
+        //             try utils.writePascalCase(writer, new_ids.items[0].name.items);
+        //         }
+        //     },
+        //     else => {
+        //         try writer.writeAll("struct {");
+        //         tab_writer.indent += 1;
 
-                tab_writer.indent -= 1;
+        //         for (new_ids.items) |new_id| {
+        //             try utils.writeFormatedDocComment(
+        //                 writer,
+        //                 new_id.description,
+        //                 new_id.summary,
+        //                 null,
+        //                 null,
+        //                 null,
+        //                 allocator,
+        //             );
+        //             try writer.writeAll(new_id.name.items);
+        //             try writer.writeAll(": ");
+        //             if (new_id.interface) |inter| {
+        //                 try writer.writeByte('*');
+        //                 try resolver.writeResolvedInterface(writer, inter.items);
+        //             } else {
+        //                 try utils.writePascalCase(writer, new_id.name.items);
+        //             }
+        //         }
 
-                try writer.writeAll("\n}");
-            },
-        }
+        //         tab_writer.indent -= 1;
+
+        //         try writer.writeAll("\n}");
+        //     },
+        // }
 
         tab_writer.indent += 1;
 
         try writer.writeAll(" {\n");
 
-        for (new_ids.items) |new_id| {
-            try writer.print("const {s}_id = self.runtime.getId();\n", .{new_id.name.items});
-            try writer.print("const {s} = try ", .{new_id.name.items});
-            if (new_id.interface) |inter| {
-                try resolver.writeResolvedInterface(writer, inter.items);
-            } else {
-                try utils.writePascalCase(writer, new_id.name.items);
+        for (request.args.items) |new_id| {
+            if (new_id.type == .new_id) {
+                try writer.print("const {s}_id = self.runtime.getId();\ntry ", .{new_id.name.items});
+                if (new_id.interface) |inter| {
+                    try resolver.writeResolvedInterface(writer, inter.items);
+                } else {
+                    try utils.writePascalCase(writer, new_id.name.items);
+                }
+                try writer.print(".init({s}, {s}_id, self.runtime);\n", .{ new_id.name.items, new_id.name.items });
+                try writer.print("errdefer {s}.deinit();\n", .{new_id.name.items});
             }
-            try writer.print(".init({s}_id, self.runtime);\n", .{new_id.name.items});
-            try writer.print("errdefer {s}.deinit();\n", .{new_id.name.items});
         }
 
         try writer.print("try self.runtime.sendRequest(self.object_id, {}, .{{", .{opcode});
@@ -200,29 +210,29 @@ pub fn processRequests(tab_writer: *TabWriter, interface: wayland.Interface, res
 
         try writer.writeAll("});");
 
-        switch (new_ids.items.len) {
-            0 => {},
-            1 => {
-                try writer.print("\n\nreturn {s};", .{new_ids.items[0].name.items});
-            },
-            else => {
-                try writer.writeAll("\n\nreturn .{");
-                tab_writer.indent += 1;
+        // switch (new_ids.items.len) {
+        //     0 => {},
+        //     1 => {
+        //         try writer.print("\n\nreturn {s};", .{new_ids.items[0].name.items});
+        //     },
+        //     else => {
+        //         try writer.writeAll("\n\nreturn .{");
+        //         tab_writer.indent += 1;
 
-                for (new_ids.items) |new_id| {
-                    try writer.print(".{s} = ", .{new_ids.items[0].name.items});
-                    if (new_id.interface) |inter| {
-                        try utils.writePascalCase(writer, inter.items);
-                    } else {
-                        try utils.writePascalCase(writer, new_id.name.items);
-                    }
-                    try writer.print("{{ .object_id = {s}_id, .runtime = self.runtime }},", .{new_ids.items[0].name.items});
-                }
+        //         for (new_ids.items) |new_id| {
+        //             try writer.print(".{s} = ", .{new_ids.items[0].name.items});
+        //             if (new_id.interface) |inter| {
+        //                 try utils.writePascalCase(writer, inter.items);
+        //             } else {
+        //                 try utils.writePascalCase(writer, new_id.name.items);
+        //             }
+        //             try writer.print("{{ .object_id = {s}_id, .runtime = self.runtime }},", .{new_ids.items[0].name.items});
+        //         }
 
-                tab_writer.indent -= 1;
-                try writer.writeAll("\n};");
-            },
-        }
+        //         tab_writer.indent -= 1;
+        //         try writer.writeAll("\n};");
+        //     },
+        // }
 
         tab_writer.indent -= 1;
 

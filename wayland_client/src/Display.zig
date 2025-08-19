@@ -12,25 +12,21 @@ runtime: *Runtime,
 pub const object_id = 1;
 pub const interface = "wl_display";
 
-pub fn init(runtime: *Runtime) !*Display {
-    const display = try runtime.allocator.create(Display);
-    errdefer display.deinit();
+pub fn init(display: *Display, runtime: *Runtime) !void {
     display.* = .{
         .runtime = runtime,
     };
     try runtime.registerObject(display);
-    return display;
 }
 
 pub fn deinit(self: *const Display) void {
     self.runtime.unregisterObject(object_id);
-
-    self.runtime.allocator.destroy(self);
 }
 
 pub fn sync(self: *const Display) !void {
     const callback_id = self.runtime.getId();
-    const callback = try protocols.wayland.WlCallback.init(callback_id, self.runtime);
+    var callback: protocols.wayland.WlCallback = undefined;
+    try protocols.wayland.WlCallback.init(&callback, callback_id, self.runtime);
     defer callback.deinit();
     try self.runtime.sendRequest(Display.object_id, 0, .{
         callback_id,
@@ -39,18 +35,15 @@ pub fn sync(self: *const Display) !void {
     while (try callback.nextDone() == null) {}
 }
 
-pub fn getRegistry(self: *const Display) !*Registry {
+pub fn getRegistry(self: *const Display, registry: *Registry) !void {
     const registry_id = self.runtime.getId();
-    const registry = try Registry.init(registry_id, self.runtime);
-    errdefer registry.deinit();
 
+    try Registry.init(registry, registry_id, self.runtime);
     try self.runtime.sendRequest(Display.object_id, 1, .{
         registry_id,
     });
 
     try self.sync();
-
-    return registry;
 }
 
 pub fn handleEvent(self: *Display, msg: Message) void {

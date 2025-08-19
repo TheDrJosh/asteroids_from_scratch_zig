@@ -6,51 +6,35 @@ const FrameManager = @import("FrameManager.zig");
 
 const Context = @This();
 
-runtime: *wayland_client.Runtime,
+runtime: wayland_client.Runtime,
 
-display: *wayland_client.Display,
-registry: *wayland_client.Registry,
+display: wayland_client.Display,
+registry: wayland_client.Registry,
 
-compositor: *wayland_client.protocols.wayland.WlCompositor,
-wm_base: *wayland_client.protocols.xdg_shell.XdgWmBase,
+compositor: wayland_client.protocols.wayland.WlCompositor,
+wm_base: wayland_client.protocols.xdg_shell.XdgWmBase,
 
 frame_manager: FrameManager,
 
 allocator: std.mem.Allocator,
 
-pub fn init(allocator: std.mem.Allocator) !Context {
-    var runtime = try allocator.create(wayland_client.Runtime);
-    errdefer allocator.destroy(runtime);
-    runtime.* = try wayland_client.Runtime.init(allocator);
-    errdefer runtime.deinit();
+pub fn init(context: *Context, allocator: std.mem.Allocator) !void {
+    context.runtime = try wayland_client.Runtime.init(allocator);
+    errdefer context.runtime.deinit();
 
-    _ = try std.Thread.spawn(.{}, wayland_client.Runtime.pullEvents, .{runtime});
+    _ = try std.Thread.spawn(.{}, wayland_client.Runtime.pullEvents, .{&context.runtime});
 
-    const display = try runtime.display();
+    try context.runtime.display(&context.display);
 
-    var registry = try display.getRegistry();
-    errdefer registry.deinit();
+    try context.display.getRegistry(&context.registry);
+    errdefer context.registry.deinit();
 
-    const compositor = try registry.bind(wayland_client.protocols.wayland.WlCompositor) orelse @panic("wl_compositor not found in globals");
-    const wm_base = try registry.bind(wayland_client.protocols.xdg_shell.XdgWmBase) orelse @panic("xdg_wm_base not found in globals");
-    errdefer wm_base.deinit();
+    try context.registry.bind(wayland_client.protocols.wayland.WlCompositor, &context.compositor);
+    try context.registry.bind(wayland_client.protocols.xdg_shell.XdgWmBase, &context.wm_base);
+    errdefer context.wm_base.deinit();
 
-    const frame_manager = try FrameManager.init(allocator, registry);
-    errdefer frame_manager.deinit();
-
-    return .{
-        .runtime = runtime,
-
-        .display = display,
-        .registry = registry,
-
-        .compositor = compositor,
-        .wm_base = wm_base,
-
-        .frame_manager = frame_manager,
-
-        .allocator = allocator,
-    };
+    try FrameManager.init(&context.frame_manager, allocator, &context.registry);
+    errdefer context.frame_manager.deinit();
 }
 
 pub fn deinit(self: *Context) void {
@@ -60,7 +44,6 @@ pub fn deinit(self: *Context) void {
     self.registry.deinit();
     self.display.deinit();
     self.runtime.deinit();
-    self.allocator.destroy(self.runtime);
 }
 
 pub fn keepAlive(self: *Context) !void {

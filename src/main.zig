@@ -41,10 +41,12 @@ pub fn main() !void {
     defer std.debug.assert(gpa.deinit() == .ok);
     const allocator = gpa.allocator();
 
-    var context = try window_lib.Context.init(allocator);
+    var context: window_lib.Context = undefined;
+    try window_lib.Context.init(&context, allocator);
     defer context.deinit();
 
-    var window = try window_lib.Window.init(&context, .{
+    var window: window_lib.Window = undefined;
+    try window_lib.Window.init(&window, &context, .{
         .title = "test",
     });
     defer window.deinit();

@@ -64,12 +64,10 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: *std.io.W
             try writer.print("\n{s}_event_queue_mutex: std.Thread.Mutex,", .{event.name.items});
         }
 
-        try writer.writeAll("\npub fn init(object_id: wayland_client.types.ObjectId, runtime: *wayland_client.Runtime) !*");
+        try writer.writeAll("\npub fn init(object: *");
         try utils.writePascalCase(writer, interface.name.items);
+        try writer.writeAll(", object_id: wayland_client.types.ObjectId, runtime: *wayland_client.Runtime) !void {");
         tab_writer.indent += 1;
-        try writer.writeAll(" {\nconst object = try runtime.allocator.create(");
-        try utils.writePascalCase(writer, interface.name.items);
-        try writer.writeAll(");");
 
         try writer.writeAll("\nobject.* = .{");
         tab_writer.indent += 1;
@@ -87,7 +85,7 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: *std.io.W
         }
 
         tab_writer.indent -= 1;
-        try writer.writeAll("\n};\ntry runtime.registerObject(object);\nreturn object;");
+        try writer.writeAll("\n};\ntry runtime.registerObject(object);");
 
         tab_writer.indent -= 1;
         try writer.writeAll("\n}");
@@ -133,8 +131,6 @@ pub fn processProtocol(protocol: wayland.Protocol, output_file_writer: *std.io.W
                 }
             }
         }
-
-        try writer.writeAll("\nself.runtime.allocator.destroy(self);");
 
         tab_writer.indent -= 1;
         try writer.writeAll("\n}");

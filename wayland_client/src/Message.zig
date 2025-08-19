@@ -81,7 +81,7 @@ pub fn parse(self: *const Message, comptime Args: type, runtime: *Runtime) !Type
                         }
                     },
                     .pointer => |p| {
-                        field.* = try p.child.init(try data_reader.readInt(types.ObjectId, native_endian), runtime);
+                        try p.child.init(field.*, try data_reader.readInt(types.ObjectId, native_endian), runtime);
                     },
                     else => {
                         @compileError("invalid arg " ++ @typeName(E));
