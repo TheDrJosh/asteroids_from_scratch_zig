@@ -55,12 +55,16 @@ pub fn main() !void {
     var last_frame = std.time.nanoTimestamp();
     var frame_number: u64 = 0;
 
+    var rainbow_progress: f64 = 0;
+
     while (!(try window.shouldClose())) {
         defer frame_number += 1;
 
         const current_frame = std.time.nanoTimestamp();
-        // std.debug.print("fps: {}\n", .{1 / (@as(f64, @floatFromInt(current_frame - last_frame)) / std.time.ns_per_s)});
+        const d_time = (@as(f64, @floatFromInt(current_frame - last_frame)) / std.time.ns_per_s);
         last_frame = current_frame;
+
+        std.debug.print("fps: {}\n", .{1 / d_time});
 
         if (try window.xdg_surface.nextConfigure()) |config_event| {
             while (try window.toplevel_surface.nextConfigure()) |toplevel_config_event| {
@@ -81,7 +85,8 @@ pub fn main() !void {
         );
         errdefer frame.forceDestroy();
 
-        const color = hsv(@as(f64, @floatFromInt(frame_number)) / 2, 1, 1);
+        rainbow_progress += d_time;
+        const color = hsv(rainbow_progress * 25, 1, 1);
 
         for (0..height) |y| {
             for (0..width) |x| {
