@@ -55,11 +55,14 @@ pub fn handleEvent(self: *Display, msg: Message) void {
             self.runtime.object_register_mutex.lock();
             defer self.runtime.object_register_mutex.unlock();
 
-            if (self.runtime.object_register.get(parsed_msg.args.object_id)) |inter| {
-                if (inter.vtable.handleError) |inter_handleError| {
-                    inter_handleError(inter.context, parsed_msg.args.code, parsed_msg.args.message.data());
+            if (object_id < self.runtime.object_register.items.len) {
+                if (self.runtime.object_register.items[parsed_msg.args.object_id - 1]) |inter| {
+                    if (inter.vtable.handleError) |inter_handleError| {
+                        inter_handleError(inter.context, parsed_msg.args.code, parsed_msg.args.message.data());
+                    }
                 }
             }
+
             std.debug.panic(
                 "Wayland Error recived on unknown object(id: {}, code: {}, message: {s})",
                 .{

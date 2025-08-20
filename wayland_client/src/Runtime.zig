@@ -22,18 +22,7 @@ fn lessThan(context: void, a: types.ObjectId, b: types.ObjectId) std.math.Order 
 
 stream: MessageStream,
 allocator: std.mem.Allocator,
-//TODO replace with a sparce array
-object_register: std.ArrayHashMap(types.ObjectId, IObject, struct {
-    pub fn eql(self: @This(), a: u32, b: u32, i: usize) bool {
-        _ = self;
-        _ = i;
-        return a == b;
-    }
-    pub fn hash(self: @This(), key: u32) u32 {
-        _ = self;
-        return key;
-    }
-}, false),
+object_register: std.ArrayList(?IObject),
 object_register_mutex: std.Thread.Mutex,
 reuse_ids: std.PriorityQueue(types.ObjectId, void, lessThan),
 reuse_ids_mutex: std.Thread.Mutex,
@@ -52,7 +41,7 @@ pub fn init(allocator: std.mem.Allocator) !Runtime {
     return Runtime{
         .stream = try MessageStream.init(allocator),
         .allocator = allocator,
-        .object_register = .init(allocator),
+        .object_register = .empty,
         .object_register_mutex = .{},
         .reuse_ids = .init(allocator, {}),
         .reuse_ids_mutex = .{},
@@ -66,7 +55,7 @@ pub fn deinit(self: *Runtime) void {
 
     self.object_register_mutex.lock();
     defer self.object_register_mutex.unlock();
-    self.object_register.deinit();
+    self.object_register.deinit(self.allocator);
 }
 
 pub fn display(self: *Runtime, d: *Display) !void {
@@ -189,7 +178,7 @@ pub fn registerObject(self: *Runtime, object: anytype) !void {
 
     const object_id = if (@hasField(std.meta.Child(@TypeOf(object)), "object_id")) object.object_id else std.meta.Child(@TypeOf(object)).object_id;
 
-    if (self.object_register.contains(object_id)) {
+    if (object_id < self.object_register.items.len and self.object_register.items[object_id - 1] != null) {
         std.debug.print("object already registered type: {s}, id: {}\n", .{ std.meta.Child(@TypeOf(object)).interface, object_id });
         return error.object_already_registered;
     }
@@ -224,23 +213,24 @@ pub fn registerObject(self: *Runtime, object: anytype) !void {
     //     },
     // );
 
-    try self.object_register.put(
-        object_id,
-        IObject{
-            .context = object,
-            .vtable = &.{
-                .handleEvent = handleEvent,
-                .handleError = handleError,
-            },
+    if (object_id >= self.object_register.items.len) {
+        try self.object_register.appendNTimes(self.allocator, null, object_id - self.object_register.items.len);
+    }
+
+    self.object_register.items[object_id - 1] = IObject{
+        .context = object,
+        .vtable = &.{
+            .handleEvent = handleEvent,
+            .handleError = handleError,
         },
-    );
+    };
 }
 
 pub fn unregisterObject(self: *Runtime, object_id: types.ObjectId) void {
     self.object_register_mutex.lock();
     defer self.object_register_mutex.unlock();
 
-    _ = self.object_register.swapRemove(object_id);
+    self.object_register.items[object_id - 1] = null;
 
     // std.debug.print("unregister object id: {}\n", .{object_id});
 }
@@ -253,11 +243,13 @@ pub fn pullEvents(self: *Runtime) !void {
         self.object_register_mutex.lock();
         defer self.object_register_mutex.unlock();
 
-        if (self.object_register.get(msg.info.object)) |object| {
-            if (object.vtable.handleEvent) |handleEvent| {
-                self.object_register_mutex.unlock();
-                handleEvent(object.context, msg);
-                self.object_register_mutex.lock();
+        if (msg.info.object - 1 < self.object_register.items.len) {
+            if (self.object_register.items[msg.info.object - 1]) |object| {
+                if (object.vtable.handleEvent) |handleEvent| {
+                    self.object_register_mutex.unlock();
+                    handleEvent(object.context, msg);
+                    self.object_register_mutex.lock();
+                }
             }
         }
     }

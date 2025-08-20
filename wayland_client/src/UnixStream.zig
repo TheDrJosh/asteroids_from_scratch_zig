@@ -342,9 +342,9 @@ pub fn recvmsg(sockfd: std.posix.socket_t, msg: *std.posix.msghdr, flags: u32) R
 
 const SCM_RIGHTS: i32 = 1;
 
-// linux only?
+//NOTE linux only?
 const cmsghdr = extern struct {
-    len: usize, // TODO: This size is different on different OS'
+    len: usize, // This size is different on different OS'
     level: i32,
     type: i32,
 };

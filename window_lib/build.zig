@@ -39,20 +39,20 @@ pub fn build(b: *std.Build) void {
 
     const wayland_client = wayland_client_dep.module("wayland_client");
 
-    const lib = b.addLibrary(.{
-        .name = "doc_lib",
-        .root_module = wayland_client,
-    });
-    b.installArtifact(lib);
+    // const lib = b.addLibrary(.{
+    //     .name = "doc_lib",
+    //     .root_module = wayland_client,
+    // });
+    // b.installArtifact(lib);
 
-    const install_docs = b.addInstallDirectory(.{
-        .source_dir = lib.getEmittedDocs(),
-        .install_dir = .prefix,
-        .install_subdir = "docs",
-    });
+    // const install_docs = b.addInstallDirectory(.{
+    //     .source_dir = lib.getEmittedDocs(),
+    //     .install_dir = .prefix,
+    //     .install_subdir = "docs",
+    // });
 
-    const docs_step = b.step("docs", "Install docs into zig-out/docs");
-    docs_step.dependOn(&install_docs.step);
+    // const docs_step = b.step("docs", "Install docs into zig-out/docs");
+    // docs_step.dependOn(&install_docs.step);
 
     // This creates a module, which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.

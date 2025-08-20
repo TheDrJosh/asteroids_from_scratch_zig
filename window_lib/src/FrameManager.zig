@@ -182,8 +182,6 @@ pub fn createFrame(self: *FrameManager, width: u32, height: u32, comptime Pixel:
         });
 
         return try self.createFrame(width, height, Pixel);
-
-        // @panic("TODO");
     }
 }
 
